@@ -492,7 +492,7 @@ useEffect(() => {
                         fontFamily: "'Cormorant Garamond', serif", fontSize: 9.5,
                         letterSpacing: "0.24em", textTransform: "uppercase",
                         color: "#C49A2E", fontWeight: 600, whiteSpace: "nowrap",
-                      }}>Chapter I — Return</span>
+                      }}>Chapter I — The Beginning</span>
                       <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(196,154,46,0.45))" }} />
                     </div>
 
