@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import bg from '../assets/bg.png';
+import { useNavigate } from "react-router-dom";
 const GRANDMA=bg;
 const GoogleIcon = () => (
   <svg width="17" height="17" viewBox="0 0 24 24">
@@ -76,6 +77,13 @@ export default function TaleTreasuryLogin() {
   const [success, setSuccess] = useState(false);
   const [bookOpen, setBookOpen] = useState(false);
   const [contentVisible, setContentVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+useEffect(() => {
+  const handleResize = () => setIsMobile(window.innerWidth < 768);
+  window.addEventListener("resize", handleResize);
+  return () => window.removeEventListener("resize", handleResize);
+}, []);
 
   const particles = useRef(
     [...Array(18)].map(() => ({
@@ -98,7 +106,8 @@ export default function TaleTreasuryLogin() {
     setLoading(true);
     setTimeout(() => { setLoading(false); setSuccess(true); }, 1800);
   };
-
+  const navigate=useNavigate();
+  function moveToSignup(){navigate('/signup')}
   return (
     <>
       <style>{`
@@ -210,7 +219,7 @@ export default function TaleTreasuryLogin() {
         background: "linear-gradient(148deg, #F5E8CC 0%, #EDD9A8 35%, #E8D49E 65%, #EFE0B8 100%)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "28px 20px", position: "relative", overflow: "hidden",
-        fontFamily: "'Lora', serif",
+        fontFamily: "'Lora', serif",overflowX: "hidden",
       }}>
         {/* Dot texture */}
         <div style={{
@@ -257,6 +266,8 @@ export default function TaleTreasuryLogin() {
           <div style={{
             position: "relative", zIndex: 2,
             display: "flex", width: "100%",
+            flexDirection: isMobile ? "column" : "row",
+            minHeight: isMobile ? "auto" : 620,
             minHeight: 620,
             borderRadius: 3,
             overflow: "hidden",
@@ -265,7 +276,7 @@ export default function TaleTreasuryLogin() {
 
             {/* ═══ LEFT PAGE ═══ */}
             <div style={{
-              width: "45%", flexShrink: 0,
+              width: isMobile ? "100%" : "45%", flexShrink: 0,
               background: "linear-gradient(158deg, #F6EED8 0%, #EDE3C2 50%, #E6D9AE 100%)",
               position: "relative", overflow: "hidden",
               transformOrigin: "right center",
@@ -329,7 +340,8 @@ export default function TaleTreasuryLogin() {
 
                 {/* Illustration */}
                 <div style={{
-                  width: "88%", maxWidth: 268,
+                  width: "100%",
+                  maxWidth: isMobile ? 200 : 268,
                   animation: contentVisible ? "breathe 5.5s ease-in-out infinite" : "none",
                   filter: "drop-shadow(0 12px 28px rgba(80,40,10,0.18))",
                 }}>
@@ -366,7 +378,7 @@ export default function TaleTreasuryLogin() {
 
             {/* ═══ SPINE ═══ */}
             <div style={{
-              width: 20, flexShrink: 0,
+              display: isMobile ? "none" : "block", flexShrink: 0,
               background: "linear-gradient(to right, #7A2E2E,#9C3F3F,#B65252,#8F3737,#7A2E2E)",
               position: "relative", zIndex: 4,
               animation: "spineGlow 4s ease-in-out infinite",
@@ -451,7 +463,7 @@ export default function TaleTreasuryLogin() {
               <div
                 className="right-scroll"
                 style={{
-                  padding: "34px 36px 30px",
+                  padding: isMobile ? "20px" : "34px 36px 30px",
                   height: "calc(100% - 9px)",
                   overflowY: "auto",
                   paddingTop: 42,
@@ -474,7 +486,7 @@ export default function TaleTreasuryLogin() {
 
                     <h1 style={{
                       fontFamily: "'Playfair Display', Georgia, serif",
-                      fontSize: 27, fontWeight: 700, color: "#1C1008",
+                      fontSize: isMobile ? 20 : 27, fontWeight: 700, color: "#1C1008",
                       lineHeight: 1.15, marginBottom: 5,
                     }}>
                       Welcome back,<br/>
@@ -482,7 +494,7 @@ export default function TaleTreasuryLogin() {
                     </h1>
                     <p style={{
                       fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic",
-                      fontSize: 19, color: "#8B6A30", lineHeight: 1.6, marginBottom: 22,
+                      fontSize: isMobile ? 16 : 19 , color: "#8B6A30", lineHeight: 1.6, marginBottom: 22,
                     }}>
                       Your story awaits — sign in to continue the adventure.
                     </p>
@@ -580,7 +592,7 @@ export default function TaleTreasuryLogin() {
                           fontWeight: 700, fontSize: 14.5, color: "#6B3E10",
                           textDecoration: "underline", textDecorationStyle: "dotted",
                           textUnderlineOffset: "2px", padding: 0, transition: "color 0.2s",
-                        }}>
+                        }} onClick={moveToSignup}>
                           Begin your tale →
                         </button>
                       </span>
