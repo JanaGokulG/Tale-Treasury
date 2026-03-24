@@ -6,7 +6,7 @@ export default function DashboardSwitch() {
   const [isMobile, setIsMobile] = useState(null);
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 768px)");
+    const media = window.matchMedia("(max-width: 1024px)");
 
     const update = () => setIsMobile(media.matches);
 
