@@ -108,6 +108,17 @@ useEffect(() => {
   };
   const navigate=useNavigate();
   function moveToSignup(){navigate('/signup')}
+  const handleClick = (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setTimeout(() => {
+    setLoading(false);
+    setSuccess(true);         // shows the right page animation
+    setTimeout(() => {
+      navigate("/dashboard"); // navigates after animation plays
+    }, 2000);
+  }, 1200);
+};
   return (
     <>
       <style>{`
@@ -538,7 +549,7 @@ useEffect(() => {
                         </button>
                       </div>
 
-                      <button type="submit" className="btn-primary" disabled={loading}>
+                      <button type="submit" className="btn-primary" disabled={loading} onClick={handleClick}>
                         <div className="btn-shine" />
                         {loading ? (
                           <div className="btn-inner">
