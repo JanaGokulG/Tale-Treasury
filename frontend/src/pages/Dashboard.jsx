@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useLottie } from "lottie-react";
 import catanimation from '../assets/cat.json';
+import api from "../api/axios";
+
 
 /* ── MOCK DATA ──────────────────────────────────────────────────────────── */
 const MOCK_USER = {
@@ -9,6 +11,8 @@ const MOCK_USER = {
   minutesThisSession: 42,
   isConsistent: true,
 };
+ 
+
 const MOCK_TROPHIES = [
   { id:1, emoji:"📖", label:"First Story Read",               earned:true  },
   { id:2, emoji:"🌙", label:"Night Owl – 3 stories after midnight", earned:true  },
@@ -17,13 +21,7 @@ const MOCK_TROPHIES = [
   { id:5, emoji:"🌟", label:"Archive Keeper",                  earned:false },
   { id:6, emoji:"🎭", label:"Genre Explorer",                  earned:false },
 ];
-const MOCK_STREAK = [
-  true,true,false,true,true,true,false,
-  true,true,true,true,false,true,true,
-  false,true,true,true,true,true,false,
-  true,true,false,true,true,true,true,
-  true,true,
-];
+
 const MOCK_DELETED = [
   { id:1, title:"The Lighthouse at the Edge of Memory" },
   { id:2, title:"A Fox Who Learned to Forgive" },
@@ -46,7 +44,7 @@ function Cat() {
 
   return (
     <div
-      style={{ position: "absolute", width: 260, bottom: "49%" }}
+      style={{ position: "absolute", width: 240, bottom: "50%",left: "-35px" }}
       onMouseEnter={() => play()}
       onMouseLeave={() => stop()}
     >
@@ -75,7 +73,7 @@ function Tip({ children, text, pos="top", style={} }) {
           background:"rgba(14,6,2,.96)", color:"#F5DEB3",
           fontFamily:"'Lora',serif", fontSize:12, whiteSpace:"nowrap",
           padding:"6px 13px", borderRadius:8, zIndex:1000,
-          border:"1px solid rgba(220,160,80,.3)",
+          border:"1px solid rgba(84, 50, 6, 0.3)",
           boxShadow:"0 4px 18px rgba(0,0,0,.6)",
         }}>{text}</div>
       )}
@@ -83,6 +81,185 @@ function Tip({ children, text, pos="top", style={} }) {
   );
 }
 
+function PortraitFrame({ user, onEdit, onEditName, isUploading }) {
+  const [hov, setHov] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameVal, setNameVal] = useState(user?.name || "");
+  const hasPhoto = !!user?.avatar;
+
+  const handleNameSubmit = () => {
+    const trimmed = nameVal.trim();
+    if (trimmed && trimmed !== user?.name) {
+      onEditName(trimmed); // send to parent
+    }
+    setEditingName(false);
+  };
+
+  return (
+    <div
+      onClick={!isUploading && !editingName ? onEdit : undefined}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        position: "absolute",
+        top: "9%", left: "43%",
+        cursor: isUploading ? "wait" : "pointer",
+        filter: hov
+          ? "drop-shadow(0 0 18px rgba(255,200,80,.55))"
+          : "drop-shadow(0 4px 14px rgba(0,0,0,.55))",
+        transition: "filter .25s",
+      }}
+    >
+      <svg width="138" height="158" viewBox="0 0 138 158" style={{ display: "block" }}>
+        {/* Frame shadow */}
+        <rect x="4" y="6" width="130" height="148" rx="5" fill="rgba(0,0,0,.35)" />
+        {/* Frame outer border */}
+        <rect x="2" y="2" width="134" height="154" rx="5" fill="#7A5030" stroke="#C8903C" strokeWidth="2" />
+        {/* Frame inner border detail */}
+        <rect x="6" y="6" width="126" height="146" rx="3" fill="none" stroke="rgba(220,170,70,.45)" strokeWidth="1.5" />
+        {/* Corner ornaments */}
+        {[[8,8],[126,8],[8,146],[126,146]].map(([cx,cy],i) => (
+          <circle key={i} cx={cx} cy={cy} r="4" fill="#C8903C" opacity=".8" />
+        ))}
+        {/* Mat area */}
+        <rect x="10" y="10" width="118" height="138" rx="2" fill="#2A1808" />
+
+        {/* Photo / spinner / placeholder */}
+        {isUploading ? (
+          <>
+            <rect x="10" y="10" width="118" height="138" rx="2" fill="#1A0E04" />
+            <circle cx="69" cy="72" r="18" fill="none" stroke="rgba(200,144,60,.2)" strokeWidth="4" />
+            <circle cx="69" cy="72" r="18" fill="none" stroke="#C8903C" strokeWidth="4"
+              strokeDasharray="28 85" strokeLinecap="round">
+              <animateTransform attributeName="transform" type="rotate"
+                from="0 69 72" to="360 69 72" dur="0.9s" repeatCount="indefinite" />
+            </circle>
+            <text x="69" y="104" textAnchor="middle" fill="rgba(200,144,60,.7)"
+              fontFamily="serif" fontSize="9" fontStyle="italic">Uploading…</text>
+          </>
+        ) : hasPhoto ? (
+          <image
+            href={user.avatar}
+            x="10" y="10" width="118" height="138"
+            clipPath="url(#frameClip)"
+            preserveAspectRatio="xMidYMid slice"
+          />
+        ) : (
+          <>
+            <rect x="10" y="10" width="118" height="138" rx="2" fill="url(#frameBg)" />
+            <circle cx="69" cy="58" r="22" fill="rgba(200,150,80,.38)" />
+            <path d="M22 128c0-26 21-47 47-47s47 21 47 47" fill="rgba(200,150,80,.28)" />
+            <text x="69" y="108" textAnchor="middle" fill="rgba(200,150,80,.5)"
+              fontFamily="serif" fontSize="9" fontStyle="italic">tap to add photo</text>
+          </>
+        )}
+
+        {/* ── Name plate ── */}
+        <rect x="32" y="134" width="74" height="18" rx="3"
+          fill="rgba(14,6,2,.82)" stroke="rgba(220,170,70,.4)" strokeWidth="1" />
+
+        {/* Edit pencil icon — shows on hover when not editing */}
+        {hov && !editingName && !isUploading && (
+          <text x="118" y="146" textAnchor="middle" fontSize="9"
+            style={{ cursor: "pointer" }}
+            onClick={(e) => {
+              e.stopPropagation(); // don't trigger photo edit
+              setEditingName(true);
+            }}>
+            ✏️
+          </text>
+        )}
+
+        {/* Name text — hidden while editing */}
+        {!editingName && (
+          <text x="69" y="146" textAnchor="middle" fill="#F5DEB3"
+            fontFamily="serif" fontSize="11" letterSpacing="0.08em">
+            {nameVal || "add name…"}
+          </text>
+        )}
+
+        {/* Hover overlay for photo — only when not editing name */}
+        {hov && !isUploading && !editingName && (
+          <rect x="10" y="10" width="118" height="124" rx="2" fill="rgba(14,6,2,.72)" />
+        )}
+        {hov && !isUploading && !editingName && (
+          <>
+            <text x="69" y="70" textAnchor="middle" fontSize="22" fontFamily="serif">
+              {hasPhoto ? "✏️" : "📷"}
+            </text>
+            <text x="69" y="90" textAnchor="middle" fill="#FFD700"
+              fontFamily="serif" fontSize="10">
+              {hasPhoto ? "Edit photo" : "Set photo"}
+            </text>
+          </>
+        )}
+
+        <defs>
+          <clipPath id="frameClip">
+            <rect x="10" y="10" width="118" height="138" rx="2" />
+          </clipPath>
+          <linearGradient id="frameBg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3A2248" />
+            <stop offset="100%" stopColor="#1E1208" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {/* ── Inline name input — rendered as HTML overlay on top of SVG ── */}
+      {editingName && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute",
+            bottom: 7,           // lines up with name plate
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 100,
+            display: "flex",
+            alignItems: "center",
+            gap: 3,
+          }}
+        >
+          <input
+            autoFocus
+            value={nameVal}
+            maxLength={18}
+            onChange={(e) => setNameVal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleNameSubmit();
+              if (e.key === "Escape") setEditingName(false);
+            }}
+            style={{
+              width: "100%",
+              background: "rgba(14,6,2,.96)",
+              border: "1px solid rgba(220,170,70,.6)",
+              borderRadius: 4,
+              color: "#F5DEB3",
+              fontFamily: "'Lora', serif",
+              fontSize: 11,
+              textAlign: "center",
+              padding: "2px 4px",
+              outline: "none",
+              letterSpacing: "0.08em",
+            }}
+          />
+          {/* Confirm tick */}
+          <span
+            onClick={handleNameSubmit}
+            style={{
+              cursor: "pointer",
+              fontSize: 13,
+              userSelect: "none",
+              flexShrink: 0,
+            }}
+          >
+            ✅
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
 /* ── Toast ───────────────────────────────────────────────────────────────── */
 function Toast({ msg, onClose }) {
   useEffect(() => { const t=setTimeout(onClose,3200); return ()=>clearTimeout(t); }, [onClose]);
@@ -103,128 +280,246 @@ function Toast({ msg, onClose }) {
 }
 
 /* ── Wall portrait frame with user photo ─────────────────────────────────── */
-function PortraitFrame({ user, onEdit }) {
-  const [hov, setHov] = useState(false);
-  const hasPhoto = !!user.avatar;
-  return (
-    <div
-      onClick={onEdit}
-      onMouseEnter={()=>setHov(true)}
-      onMouseLeave={()=>setHov(false)}
-      style={{
-        position:"absolute",
-        top:"9%", left:"43%",
-        cursor:"pointer",
-        filter: hov ? "drop-shadow(0 0 18px rgba(255,200,80,.55))" : "drop-shadow(0 4px 14px rgba(0,0,0,.55))",
-        transition:"filter .25s",
-      }}
-    >
-      {/* Outer ornate frame */}
-      <svg width="138" height="158" viewBox="0 0 138 158" style={{ display:"block" }}>
-        {/* Frame shadow */}
-        <rect x="4" y="6" width="130" height="148" rx="5" fill="rgba(0,0,0,.35)"/>
-        {/* Frame outer border */}
-        <rect x="2" y="2" width="134" height="154" rx="5" fill="#7A5030" stroke="#C8903C" strokeWidth="2"/>
-        {/* Frame inner border detail */}
-        <rect x="6" y="6" width="126" height="146" rx="3" fill="none" stroke="rgba(220,170,70,.45)" strokeWidth="1.5"/>
-        {/* Corner ornaments */}
-        {[[8,8],[126,8],[8,146],[126,146]].map(([cx,cy],i)=>(
-          <circle key={i} cx={cx} cy={cy} r="4" fill="#C8903C" opacity=".8"/>
-        ))}
-        {/* Mat area */}
-        <rect x="10" y="10" width="118" height="138" rx="2" fill="#2A1808"/>
-        {/* Photo or placeholder */}
-        {hasPhoto ? (
-          <image href={user.avatar} x="10" y="10" width="118" height="138" clipPath="url(#frameClip)" preserveAspectRatio="xMidYMid slice"/>
-        ) : (
-          <>
-            {/* Warm gradient bg for placeholder */}
-            <rect x="10" y="10" width="118" height="138" rx="2" fill="url(#frameBg)"/>
-            {/* Silhouette */}
-            <circle cx="69" cy="58" r="22" fill="rgba(200,150,80,.38)"/>
-            <path d="M22 128c0-26 21-47 47-47s47 21 47 47" fill="rgba(200,150,80,.28)"/>
-            {/* Placeholder text */}
-            <text x="69" y="108" textAnchor="middle" fill="rgba(200,150,80,.5)"
-              fontFamily="serif" fontSize="9" fontStyle="italic">tap to add photo</text>
-          </>
-        )}
-        {/* Name plate */}
-        <rect x="32" y="134" width="74" height="18" rx="3" fill="rgba(14,6,2,.82)" stroke="rgba(220,170,70,.4)" strokeWidth="1"/>
-        <text x="69" y="146" textAnchor="middle" fill="#F5DEB3"
-          fontFamily="serif" fontSize="11" letterSpacing="0.08em">{user.name}</text>
 
-        {/* Hover overlay */}
-        {hov && (
-          <rect x="10" y="10" width="118" height="124" rx="2" fill="rgba(14,6,2,.72)"/>
-        )}
-        {hov && (
-          <>
-            <text x="69" y="70" textAnchor="middle" fontSize="22" fontFamily="serif">{hasPhoto?"✏️":"📷"}</text>
-            <text x="69" y="90" textAnchor="middle" fill="#FFD700"
-              fontFamily="serif" fontSize="10">{hasPhoto?"Edit photo":"Set photo"}</text>
-          </>
-        )}
-        <defs>
-          <clipPath id="frameClip"><rect x="10" y="10" width="118" height="138" rx="2"/></clipPath>
-          <linearGradient id="frameBg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3A2248"/>
-            <stop offset="100%" stopColor="#1E1208"/>
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
-  );
-}
+
+// function PortraitFrame({ user, onEdit }) {
+//   const [hov, setHov] = useState(false);
+//   const [image, setImage] = useState(null);
+//   const [preview, setPreview] = useState(null);
+//   const handleImageChange = (e) => {
+//   const file = e.target.files[0];
+//   if (!file) return;
+
+//   setImage(file);
+
+//   // Preview
+//   const reader = new FileReader();
+//   reader.onloadend = () => {
+//     setPreview(reader.result);
+//   };
+//   reader.readAsDataURL(file);
+// };
+//   const hasPhoto = !!user.avatar;
+//   return (
+//     <div
+//       onClick={onEdit}
+//       onMouseEnter={()=>setHov(true)}
+//       onMouseLeave={()=>setHov(false)}
+//       style={{
+//         position:"absolute",
+//         top:"9%", left:"43%",
+//         cursor:"pointer",
+//         filter: hov ? "drop-shadow(0 0 18px rgba(255,200,80,.55))" : "drop-shadow(0 4px 14px rgba(0,0,0,.55))",
+//         transition:"filter .25s"
+        
+//       }}
+//     >
+//       {/* Outer ornate frame */}
+//       <svg width="138" height="158" viewBox="0 0 138 158" style={{ display:"block" }}>
+//         {/* Frame shadow */}
+//         <rect x="4" y="6" width="130" height="148" rx="5" fill="rgba(0,0,0,.35)"/>
+//         {/* Frame outer border */}
+//         <rect x="2" y="2" width="134" height="154" rx="5" fill="#7A5030" stroke="#C8903C" strokeWidth="2"/>
+//         {/* Frame inner border detail */}
+//         <rect x="6" y="6" width="126" height="146" rx="3" fill="none" stroke="rgba(220,170,70,.45)" strokeWidth="1.5"/>
+//         {/* Corner ornaments */}
+//         {[[8,8],[126,8],[8,146],[126,146]].map(([cx,cy],i)=>(
+//           <circle key={i} cx={cx} cy={cy} r="4" fill="#C8903C" opacity=".8"/>
+//         ))}
+//         {/* Mat area */}
+//         <rect x="10" y="10" width="118" height="138" rx="2" fill="#2A1808"/>
+//         {/* Photo or placeholder */}
+//         {hasPhoto ? (
+//           <image href={user.avatar} x="10" y="10" width="118" height="138" clipPath="url(#frameClip)" preserveAspectRatio="xMidYMid slice"/>
+//         ) : (
+//           <>
+//             {/* Warm gradient bg for placeholder */}
+//             <rect x="10" y="10" width="118" height="138" rx="2" fill="url(#frameBg)"/>
+//             {/* Silhouette */}
+//             <circle cx="69" cy="58" r="22" fill="rgba(200,150,80,.38)"/>
+//             <path d="M22 128c0-26 21-47 47-47s47 21 47 47" fill="rgba(200,150,80,.28)"/>
+//             {/* Placeholder text */}
+//             <text x="69" y="108" textAnchor="middle" fill="rgba(200,150,80,.5)"
+//               fontFamily="serif" fontSize="9" fontStyle="italic">tap to add photo</text>
+//           </>
+//         )}
+//         {/* Name plate */}
+//         <rect x="32" y="134" width="74" height="18" rx="3" fill="rgba(14,6,2,.82)" stroke="rgba(220,170,70,.4)" strokeWidth="1"/>
+//         <text x="69" y="146" textAnchor="middle" fill="#F5DEB3"
+//           fontFamily="serif" fontSize="11" letterSpacing="0.08em">{user.name}</text>
+
+//         {/* Hover overlay */}
+//         {hov && (
+//           <rect x="10" y="10" width="118" height="124" rx="2" fill="rgba(14,6,2,.72)"/>
+//         )}
+//         {hov && (
+//           <>
+//             <text x="69" y="70" textAnchor="middle" fontSize="22" fontFamily="serif">{hasPhoto?"✏️":"📷"}</text>
+//             <text x="69" y="90" textAnchor="middle" fill="#FFD700"
+//               fontFamily="serif" fontSize="10">{hasPhoto?"Edit photo":"Set photo"}</text>
+//           </>
+//         )}
+//         <defs>
+//           <clipPath id="frameClip"><rect x="10" y="10" width="118" height="138" rx="2"/></clipPath>
+//           <linearGradient id="frameBg" x1="0" y1="0" x2="0" y2="1">
+//             <stop offset="0%" stopColor="#3A2248"/>
+//             <stop offset="100%" stopColor="#1E1208"/>
+//           </linearGradient>
+//         </defs>
+//       </svg>
+//     </div>
+//   );
+// }
+
 
 /* ── Live Clock (session time on hover) ──────────────────────────────────── */
 function WallClock({ session }) {
   const [now, setNow] = useState(new Date());
   const [hov, setHov] = useState(false);
-  useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(id); },[]);
+  const [loginTime, setLoginTime] = useState(null);
 
-  const s=now.getSeconds(), m=now.getMinutes(), h=now.getHours()%12;
-  const pt=(deg,r)=>{ const a=(deg-90)*Math.PI/180; return [37+r*Math.cos(a), 37+r*Math.sin(a)]; };
-  const [hx,hy]=pt(h*30+m*0.5,13);
-  const [mx,my]=pt(m*6+s*0.1,19);
-  const [sx,sy]=pt(s*6,22);
+  const STORAGE_KEY = "userLoginTimestamp";
+
+  // Load login time from localStorage (or set it if not exists)
+  useEffect(() => {
+    let savedLoginTime = localStorage.getItem(STORAGE_KEY);
+
+    if (!savedLoginTime) {
+      // First time or after logout → set current time as login time
+      savedLoginTime = Date.now().toString();
+      localStorage.setItem(STORAGE_KEY, savedLoginTime);
+    }
+
+    setLoginTime(parseInt(savedLoginTime, 10));
+  }, []);
+
+  // Live clock update every second
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, []);
+
+  // Calculate elapsed time in minutes
+  const getElapsedMinutes = () => {
+    if (!loginTime) return 0;
+    const elapsedMs = now.getTime() - loginTime;
+    return Math.floor(elapsedMs / 60000); // convert ms to minutes
+  };
+
+  const elapsedMinutes = getElapsedMinutes();
+
+  // Format time nicely: "2h 34m" or "45m"
+  const formatTime = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}min`;
+  };
+
+  const s = now.getSeconds();
+  const m = now.getMinutes();
+  const h = now.getHours() % 12;
+
+  const pt = (deg, r) => {
+    const a = (deg - 90) * Math.PI / 180;
+    return [37 + r * Math.cos(a), 37 + r * Math.sin(a)];
+  };
+
+  const [hx, hy] = pt(h * 30 + m * 0.5, 13);
+  const [mx, my] = pt(m * 6 + s * 0.1, 19);
+  const [sx, sy] = pt(s * 6, 22);
 
   return (
-    <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
-      style={{ position:"absolute", top:"2.5%", right:"34%", cursor:"pointer", zIndex:10 }}>
-      <svg width="72" height="72" viewBox="0 0 72 72"
-        style={{ filter: session.isConsistent ? "drop-shadow(0 0 9px rgba(255,190,80,.42))" : "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }}>
+    <div 
+      onMouseEnter={() => setHov(true)} 
+      onMouseLeave={() => setHov(false)}
+      style={{ 
+        position: "absolute", 
+        top: "2.5%", 
+        right: "34%", 
+        cursor: "pointer", 
+        zIndex: 10 
+      }}
+    >
+      <svg 
+        width="72" 
+        height="72" 
+        viewBox="0 0 72 72"
+        style={{ 
+          filter: session.isConsistent 
+            ? "drop-shadow(0 0 9px rgba(255,190,80,.42))" 
+            : "drop-shadow(0 2px 6px rgba(0,0,0,.4))" 
+        }}
+      >
+        {/* Clock face - unchanged */}
         <circle cx="36" cy="36" r="33" fill="#2E1C08" stroke="#C8903C" strokeWidth="2.5"/>
         <circle cx="36" cy="36" r="29" fill="#200E04" stroke="rgba(200,144,60,.22)" strokeWidth="1"/>
-        {[...Array(12)].map((_,i)=>{
-          const a=(i*30-90)*Math.PI/180;
-          return <line key={i} x1={36+24*Math.cos(a)} y1={36+24*Math.sin(a)}
-            x2={36+(i%3===0?27:26)*Math.cos(a)} y2={36+(i%3===0?27:26)*Math.sin(a)}
-            stroke="#C8903C" strokeWidth={i%3===0?2.2:1} strokeLinecap="round"/>;
+
+        {[...Array(12)].map((_, i) => {
+          const a = (i * 30 - 90) * Math.PI / 180;
+          return (
+            <line 
+              key={i} 
+              x1={36 + 24 * Math.cos(a)} 
+              y1={36 + 24 * Math.sin(a)}
+              x2={36 + (i % 3 === 0 ? 27 : 26) * Math.cos(a)} 
+              y2={36 + (i % 3 === 0 ? 27 : 26) * Math.sin(a)}
+              stroke="#C8903C" 
+              strokeWidth={i % 3 === 0 ? 2.2 : 1} 
+              strokeLinecap="round"
+            />
+          );
         })}
+
         <text x="36" y="15" textAnchor="middle" fill="rgba(200,144,60,.55)" fontFamily="serif" fontSize="6">XII</text>
         <text x="59" y="40" textAnchor="middle" fill="rgba(200,144,60,.55)" fontFamily="serif" fontSize="6">III</text>
         <text x="36" y="62" textAnchor="middle" fill="rgba(200,144,60,.55)" fontFamily="serif" fontSize="6">VI</text>
         <text x="14" y="40" textAnchor="middle" fill="rgba(200,144,60,.55)" fontFamily="serif" fontSize="6">IX</text>
+
         <line x1="36" y1="36" x2={hx} y2={hy} stroke="#F5DEB3" strokeWidth="2.5" strokeLinecap="round"/>
         <line x1="36" y1="36" x2={mx} y2={my} stroke="#F5DEB3" strokeWidth="1.8" strokeLinecap="round"/>
         <line x1="36" y1="36" x2={sx} y2={sy} stroke="#FF8C42" strokeWidth="1" strokeLinecap="round"/>
         <circle cx="36" cy="36" r="2.5" fill="#FF8C42"/>
       </svg>
-      {hov && (
+
+      {hov && loginTime && (
         <div style={{
-          position:"absolute", bottom:"7%", left:"50%", transform:"translateX(-50%)",
-          background:"rgba(14,6,2,.96)", color:"#F5DEB3",
-          fontFamily:"'Lora',serif", fontSize:12,
-          padding:"9px 16px", borderRadius:10, whiteSpace:"nowrap",
-          border:"1px solid rgba(220,160,80,.35)",
-          boxShadow:"0 4px 20px rgba(0,0,0,.55)",
-          textAlign:"center", lineHeight:1.65, zIndex:999,
+          position: "absolute", 
+          bottom: "7%", 
+          left: "50%", 
+          transform: "translateX(-50%)",
+          background: "rgba(14,6,2,.96)", 
+          color: "#F5DEB3",
+          fontFamily: "'Lora',serif", 
+          fontSize: 12,
+          padding: "10px 16px", 
+          borderRadius: 10, 
+          whiteSpace: "nowrap",
+          border: "1px solid rgba(220,160,80,.35)",
+          boxShadow: "0 4px 20px rgba(0,0,0,.55)",
+          textAlign: "center", 
+          lineHeight: 1.6, 
+          zIndex: 999,
         }}>
-          <div style={{ color:"#FFB347", fontWeight:600, marginBottom:2 }}>
-            ⏱ {now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
+          <div style={{ color: "#FFB347", fontWeight: 600, marginBottom: 4 }}>
+            ⏱ {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </div>
-          Reading this session: <strong style={{ color:"#FF8C42" }}>{session.minutesThisSession} min</strong>
-          {session.isConsistent && <div style={{ color:"#FFD700", fontSize:11, marginTop:2 }}>🔥 On a streak!</div>}
+          
+          {/* <div>
+            Time on site: <strong style={{ color: "#FF8C42" }}>{formatTime(elapsedMinutes)}</strong>
+          </div> */}
+
+          {session.minutesThisSession && (
+            <div style={{ marginTop: 4, fontSize: 11, opacity: 0.9 }}>
+              This session: <strong style={{ color: "#FFD700" }}>{formatTime(elapsedMinutes)}</strong>
+            </div>
+          )}
+
+          {session.isConsistent && (
+            <div style={{ color: "#FFD700", fontSize: 11, marginTop: 2 }}>🔥 On a streak!</div>
+          )}
         </div>
       )}
     </div>
@@ -232,128 +527,256 @@ function WallClock({ session }) {
 }
 
 /* ── Real Calendar with streak dots ─────────────────────────────────────── */
-function StreakCalendar({ streakDays }) {
+function StreakCalendar() {
+  const [streakData, setStreakData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [displayDate, setDisplayDate] = useState(new Date());
+
   const today = new Date();
-  const [displayDate, setDisplayDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-
-  const year  = displayDate.getFullYear();
+  const year = displayDate.getFullYear();
   const month = displayDate.getMonth();
-  const monthName = displayDate.toLocaleString("default",{month:"short"}).toUpperCase()+" "+year;
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const monthName = displayDate.toLocaleString("default", { month: "short" }).toUpperCase() + " " + year;
 
-  // Map streak array to date string -> bool
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // Fetch real streak data using your axios instance
+  useEffect(() => {
+    const fetchStreak = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await api.get("/auth/streak");   // ← Uses baseURL + /auth/streak
+
+        console.log("✅ Streak data received:", res.data);
+        setStreakData(res.data);
+      } catch (err) {
+        console.error("❌ Failed to load streak:", err.response?.data || err.message);
+        
+        // Show more helpful error
+        if (err.response?.status === 401) {
+          setError("Please login again");
+        } else if (err.response?.status === 404) {
+          setError("Streak route not found. Check backend routes.");
+        } else {
+          setError("Could not load reading calendar");
+        }
+
+        // Fallback empty data
+        setStreakData({ streakDays: [], currentStreak: 0, longestStreak: 0 });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStreak();
+  }, []);
+
+  // Build streakMap for the current displayed month
   const streakMap = {};
-  streakDays.forEach((v,i)=>{
-    const d = new Date(today);
-    d.setDate(d.getDate()-(streakDays.length-1-i));
-    streakMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] = v;
-  });
+  if (streakData?.streakDays?.length) {
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - (streakData.streakDays.length - 1));
+
+    streakData.streakDays.forEach((logged, i) => {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      streakMap[key] = logged;
+    });
+  }
 
   const cells = [];
-  for(let i=0;i<firstDay;i++) cells.push(null);
-  for(let d=1;d<=daysInMonth;d++) cells.push(d);
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  const isToday = (d)=> d===today.getDate() && month===today.getMonth() && year===today.getFullYear();
-  const getStreak = (d)=> streakMap[`${year}-${month}-${d}`];
+  const isToday = (d) =>
+    d === today.getDate() &&
+    month === today.getMonth() &&
+    year === today.getFullYear();
+
+  const getStreak = (d) => streakMap[`${year}-${month}-${d}`];
 
   return (
-    <Tip text="Your reading calendar" pos="left" style={{ position:"absolute", top:"34%", right:"1.2%" }}>
+    <Tip text="Your reading calendar" pos="left" style={{ position: "absolute", top: "34%", right: "1.2%" }}>
       <div style={{
-        background:"rgba(14,6,2,.85)",
-        border:"1px solid rgba(160,100,40,.42)",
-        borderRadius:9, overflow:"hidden",
-        backdropFilter:"blur(4px)",
-        width:148,
+        background: "rgba(14,6,2,.85)",
+        border: "1px solid rgba(160,100,40,.42)",
+        borderRadius: 9,
+        overflow: "hidden",
+        backdropFilter: "blur(4px)",
+        width: 148,
       }}>
         {/* Header */}
         <div style={{
-          background:"#8B2820", padding:"5px 8px",
-          display:"flex", justifyContent:"space-between", alignItems:"center",
+          background: "#8B2820",
+          padding: "5px 8px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}>
-          <button onClick={()=>setDisplayDate(new Date(year,month-1,1))}
-            style={{ background:"none", border:"none", color:"rgba(255,240,220,.7)",
-              cursor:"pointer", fontSize:13, lineHeight:1, padding:"0 4px" }}>‹</button>
-          <span style={{ fontFamily:"'Cormorant Garamond',serif",
-            fontSize:10, letterSpacing:".18em", color:"rgba(255,240,220,.9)", fontWeight:600 }}>
+          <button
+            onClick={() => setDisplayDate(new Date(year, month - 1, 1))}
+            style={{ background: "none", border: "none", color: "rgba(255,240,220,.7)", cursor: "pointer", fontSize: 13 }}
+          >
+            ‹
+          </button>
+          <span style={{
+            fontFamily: "'Cormorant Garamond',serif",
+            fontSize: 10,
+            letterSpacing: ".18em",
+            color: "rgba(255,240,220,.9)",
+            fontWeight: 600,
+          }}>
             {monthName}
           </span>
-          <button onClick={()=>setDisplayDate(new Date(year,month+1,1))}
-            style={{ background:"none", border:"none", color:"rgba(255,240,220,.7)",
-              cursor:"pointer", fontSize:13, lineHeight:1, padding:"0 4px" }}>›</button>
+          <button
+            onClick={() => setDisplayDate(new Date(year, month + 1, 1))}
+            style={{ background: "none", border: "none", color: "rgba(255,240,220,.7)", cursor: "pointer", fontSize: 13 }}
+          >
+            ›
+          </button>
         </div>
+
         {/* Day labels */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", padding:"4px 4px 2px" }}>
-          {["S","M","T","W","T","F","S"].map((d,i)=>(
-            <div key={i} style={{ textAlign:"center", fontFamily:"'Lora',serif",
-              fontSize:8, color:"rgba(200,150,80,.55)", fontWeight:600 }}>{d}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", padding: "4px 4px 2px" }}>
+          {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+            <div key={i} style={{
+              textAlign: "center",
+              fontFamily: "'Lora',serif",
+              fontSize: 8,
+              color: "rgba(200,150,80,.55)",
+              fontWeight: 600,
+            }}>
+              {d}
+            </div>
           ))}
         </div>
-        {/* Dates */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", padding:"2px 4px 6px", gap:1 }}>
-          {cells.map((d,i)=>{
-            if(!d) return <div key={i}/>;
+
+        {/* Calendar Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", padding: "2px 4px 6px", gap: 1 }}>
+          {cells.map((d, i) => {
+            if (!d) return <div key={i} style={{ width: 17, height: 17 }} />;
+
             const logged = getStreak(d);
             const tod = isToday(d);
+
             return (
-              <div key={i} style={{
-                width:17, height:17, borderRadius:3, margin:"0 auto",
-                background: tod ? "#C8903C"
-                  : logged===true  ? "rgba(255,160,50,.6)"
-                  : logged===false ? "rgba(255,60,60,.18)"
-                  : "rgba(255,255,255,.06)",
-                border: tod ? "1px solid #FFD700" : "1px solid transparent",
-                display:"flex", alignItems:"center", justifyContent:"center",
-                position:"relative",
-              }}>
-                <span style={{ fontFamily:"'Lora',serif", fontSize:7.5,
-                  color: tod ? "#1A0A04"
-                    : logged===true ? "#FFD700"
-                    : logged===false ? "rgba(255,100,100,.65)"
+              <div
+                key={i}
+                style={{
+                  width: 17,
+                  height: 17,
+                  borderRadius: 3,
+                  margin: "0 auto",
+                  background: tod
+                    ? "#C8903C"
+                    : logged === true
+                    ? "rgba(255,160,50,.75)"
+                    : logged === false
+                    ? "rgba(255,60,60,.18)"
+                    : "rgba(255,255,255,.06)",
+                  border: tod ? "1px solid #FFD700" : "1px solid transparent",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <span style={{
+                  fontFamily: "'Lora',serif",
+                  fontSize: 7.5,
+                  color: tod
+                    ? "#1A0A04"
+                    : logged === true
+                    ? "#FFD700"
+                    : logged === false
+                    ? "rgba(255,100,100,.65)"
                     : "rgba(200,160,80,.4)",
                   fontWeight: tod ? 700 : 400,
                 }}>
-                  {logged===true && !tod ? "✓" : logged===false ? "×" : d}
+                  {logged === true && !tod ? "✓" : d}
                 </span>
               </div>
             );
           })}
         </div>
-      </div>
-    </Tip>
-  );
-}
 
-/* ── Emotion Lamp ─────────────────────────────────────────────────────────── */
-function EmotionLamp({ genre }) {
-  const lamp = GENRE_LAMP[genre] || GENRE_LAMP.fantasy;
-  const [hov,setHov]=useState(false);
-  return (
-    <Tip text={`Mood: ${genre.charAt(0).toUpperCase()+genre.slice(1)}`} pos="right">
-      <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
-        style={{
-          position:"absolute", bottom:"27%", left:"8.5%",
-          filter:`drop-shadow(0 0 ${hov?28:13}px ${lamp.glow})`,
-          transition:"filter .4s", animation:"lampPulse 3s ease-in-out infinite",
-          cursor:"pointer",
-        }}>
-        <svg width="52" height="80" viewBox="0 0 52 80">
-          <ellipse cx="26" cy="76" rx="15" ry="4" fill="#2A1808"/>
-          <rect x="23" y="38" width="6" height="38" rx="3" fill="#5A3520"/>
-          <line x1="26" y1="38" x2="15" y2="18" stroke="#5A3520" strokeWidth="3.5" strokeLinecap="round"/>
-          <path d="M3 18 L26 10 L26 26 Z" fill={lamp.color}/>
-          <path d="M3 18 L-12 46 L16 46 Z" fill={lamp.glow} opacity={hov?.4:.22} style={{transition:"opacity .4s"}}/>
-          <circle cx="14" cy="18" r="4.5" fill={lamp.glow} opacity=".95"/>
-          <circle cx="14" cy="18" r="8" fill={lamp.glow} opacity=".12"/>
-        </svg>
+        {/* Current Streak Footer */}
+        {streakData && (
+          <div style={{ textAlign: "center", padding: "6px 0", fontSize: 11, color: "#FFD700" }}>
+            🔥 Current streak: <strong>{streakData.currentStreak || 0}</strong> days
+          </div>
+        )}
+
+        {error && <div style={{ color: "#FF8C42", fontSize: 10, textAlign: "center", padding: "4px" }}>{error}</div>}
+        {loading && <div style={{ color: "#C8903C", fontSize: 10, textAlign: "center", padding: "6px" }}>Loading calendar...</div>}
       </div>
     </Tip>
   );
 }
+/* ── Emotion Lamp ─────────────────────────────────────────────────────────── */
+
+// function EmotionLamp({ genre }) {
+//   const lamp = GENRE_LAMP[genre] || GENRE_LAMP.fantasy;
+//   const [hov, setHov] = useState(false);
+
+//   return (
+//     <Tip text={`Mood: ${genre.charAt(0).toUpperCase() + genre.slice(1)}`}>
+//       <div
+//         onMouseEnter={() => setHov(true)}
+//         onMouseLeave={() => setHov(false)}
+//         style={{
+//           position: "absolute",
+//           top: 260,
+//           left: 114,
+//           pointerEvents: "auto",
+//           filter: `drop-shadow(0 0 ${hov ? 28 : 13}px ${lamp.glow})`,
+//           transition: "filter .4s",
+//           animation: "lampPulse 3s ease-in-out infinite",
+//           cursor: "pointer",
+//           width: "60px",
+//           height: "90px",
+//         }}
+//       >
+//         <svg width="60" height="90" viewBox="0 0 60 90">
+//           {/* Lamp Base */}
+//           <ellipse cx="30" cy="85" rx="20" ry="6" fill="#2A1808" />
+
+//           {/* Lamp Stem */}
+//           <rect x="28" y="40" width="4" height="45" rx="2" fill="#5A3520" />
+
+//           {/* Lampshade */}
+//           <polygon
+//             points="10,40 50,40 35,15 25,15"
+//             fill={lamp.color}
+//             stroke="#3B220F"
+//             strokeWidth="1"
+//           />
+
+//           {/* Glow / light cone */}
+//           <path
+//             d="M25 15 L35 15 L5 60 L55 60 Z"
+//             fill={lamp.glow}
+//             opacity={hov ? 0.35 : 0.15}
+//             style={{ transition: "opacity .4s" }}
+//           />
+
+//           {/* Lamp bulb */}
+//           <circle cx="30" cy="20" r="4" fill={lamp.glow} opacity="0.95" />
+//           <circle cx="30" cy="20" r="8" fill={lamp.glow} opacity="0.12" />
+//         </svg>
+//       </div>
+//     </Tip>
+//   );
+// }
 
 /* ── Nav Book ─────────────────────────────────────────────────────────────── */
 function NavBook({ title, color, spine, w, h, tilt=0, onClick }) {
   const [hov,setHov]=useState(false);
+  
   return (
     <Tip text={title} pos="top">
       <div onClick={onClick} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
@@ -396,59 +819,256 @@ function ShelfBoard() {
   );
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Usage
+
+
+
 /* ── The two shelves ──────────────────────────────────────────────────────── */
+ export const logoutUserWithApi = async () => {
+  try {
+    await api.post("/auth/logout");
+    console.log("Backend logout successful");
+    
+    localStorage.removeItem("userLoginTimestamp");
+  } catch (err) {
+    
+    console.warn("Backend logout failed");
+
+  } finally {
+   
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("userLoginTimestamp");
+
+    window.location.href = "/";
+  }
+}; // ← Import your logout function
+
 function Shelves({ onNav }) {
+  const [showContactCard, setShowContactCard] = useState(false);
+  const cardRef = useRef(null);
+
   const books = [
-    { title:"Home",    color:"#B03020", spine:"#7A1A10", w:27, h:76 },
-    { title:"About",   color:"#2E6B32", spine:"#1A4A1E", w:22, h:84 },
-    { title:"Contact", color:"#1A5FA0", spine:"#0D3D6E", w:30, h:70 },
-    { title:"GitHub",  color:"#5C3080", spine:"#3A1A5C", w:24, h:79 },
+    { title: "Logout", color: "#B03020", spine: "#7A1A10", w: 27, h: 76, action: "logout" },
+    { title: "About",  color: "#2E6B32", spine: "#1A4A1E", w: 22, h: 84, action: "about" },
+    // { title: "Contact",color: "#1A5FA0", spine: "#0D3D6E", w: 30, h: 70, action: "contact" },
+    { title: "Contact", color: "#5C3080", spine: "#3A1A5C", w: 24, h: 79, action: "github" },
   ];
+
+  const teamProfiles = [
+    {
+      name: "Harshith",
+      role: "Backend Developer",
+      linkedin: "https://linkedin.com/in/yourprofile",   // ← Update
+      github: "https://github.com/yourusername",
+      instagram: "https://instagram.com/yourusername"
+    },
+    // Add your other team members here
+    {
+      name: "Nausheen",
+      role: "Frontend Designer",
+      linkedin: "https://linkedin.com/in/teammate1",
+      github: "https://github.com/teammate1",
+      instagram: "https://instagram.com/teammate1"
+    },
+    {
+      name: "Full Stack Developer",
+      role: "Backend Engineer",
+      linkedin: "https://linkedin.com/in/teammate2",
+      github: "https://github.com/teammate2",
+      instagram: "https://instagram.com/teammate2"
+    }
+  ];
+
+  const handleBookClick = (book) => {
+    if (book.action === "logout") {
+      if (window.confirm("Are you sure you want to logout?")) {
+        logoutUserWithApi();
+      }
+    } else if (book.action === "about") {
+      onNav("about");
+    } else if (book.action === "contact" || book.action === "github") {
+      setShowContactCard(true);
+    }
+  };
+
+  // Close card when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (cardRef.current && !cardRef.current.contains(e.target)) {
+        setShowContactCard(false);
+      }
+    };
+
+    if (showContactCard) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showContactCard]);
+
   return (
-    <div style={{ position:"absolute", top:"4.5%", right:"3%", width:"clamp(192px,20vw,238px)" }}>
+    <>
+      <div style={{ position: "absolute", top: "4.5%", right: "3%", width: "clamp(192px, 20vw, 238px)" }}>
+        {/* SHELF 1 */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, margin: "-19px 20px 10px -85px", height: 98 }}>
+          {books.map((b, i) => (
+            <NavBook 
+              key={b.title} 
+              {...b} 
+              tilt={i === 3 ? 8 : 0} 
+              onClick={() => handleBookClick(b)}
+            />
+          ))}
+          {/* Decorative books */}
+          <div style={{ width:17, height:63, background:"linear-gradient(to right,#5A3018,#7A5030)", borderRadius:"2px 3px 3px 2px", transform:"rotate(16deg) translateY(5px)" }}/>
+          <div style={{ width:13, height:70, background:"linear-gradient(to right,#253D25,#3A5A38)", borderRadius:"2px 3px 3px 2px", transform:"rotate(-7deg) translateY(3px)" }}/>
+        </div>
 
-      {/* ── SHELF 1: Navigation books ── */}
-      <div style={{ display:"flex", alignItems:"flex-end", gap:3, margin:"-19px 20px 10px -85px", height:98 }}>
-        {books.map((b,i)=>(
-          <NavBook key={b.title} {...b} tilt={i===3?8:0} onClick={()=>onNav(b.title)}/>
-        ))}
-        {/* Two leaning filler books for realism */}
-        <div style={{ width:17, height:63, flexShrink:0,
-          background:"linear-gradient(to right,#5A3018,#7A5030)",
-          borderRadius:"2px 3px 3px 2px",
-          transform:"rotate(16deg) translateY(5px)", opacity:"100" }}/>
-        <div style={{ width:13, height:70, flexShrink:0,
-          background:"linear-gradient(to right,#253D25,#3A5A38)",
-          borderRadius:"2px 3px 3px 2px",
-          transform:"rotate(-7deg) translateY(3px)", opacity:"100" }}/>
-        <div style={{ width:9, height:46, flexShrink:0,
-          background:"linear-gradient(to bottom,#C8903C,#8B6020)",
-          borderRadius:2, marginLeft:4, opacity:"100",
-          boxShadow:"2px 0 5px rgba(0,0,0,.3)" }}/>
+        <div style={{ height: 13 }}/>
+
+        {/* SHELF 2 - Trophies (unchanged) */}
+        <div style={{ display:"flex", alignItems:"flex-end", gap:8, padding:"0 12px", height:56 }}>
+          {MOCK_TROPHIES.map((t,i)=>(
+            <Tip key={t.id} text={t.label} pos="bottom">
+              <div style={{ fontSize: t.earned ? 21 : 18, /* your styles */ }}>{t.emoji}</div>
+            </Tip>
+          ))}
+        </div>
       </div>
-      {/* <ShelfBoard /> */}
 
-      {/* Gap between shelves */}
-      <div style={{ height:13 }}/>
+      {/* Ornate Parchment Contact Card */}
+      {showContactCard && (
+        <div 
+          ref={cardRef}
+          style={{
+            position: "absolute",
+            top: "18%",
+            right: "22%",
+            width: "310px",
+            background: "#F5E8C7",                    // Parchment color
+            border: "3px solid #8B6020",
+            borderRadius: "12px",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.75), inset 0 0 80px rgba(139,96,32,0.15)",
+            overflow: "hidden",
+            zIndex: 1200,
+            animation: "parchmentPop 0.4s ease-out",
+          }}
+        >
+          {/* Wax Seal Top */}
+          <div style={{
+            position: "absolute",
+            top: "-18px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "52px",
+            height: "52px",
+            background: "#9C2A2A",
+            borderRadius: "50%",
+            border: "4px solid #FFD700",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10,
+          }}>
+            <span style={{ color: "#FFD700", fontSize: "22px", fontWeight: "bold" }}>✧</span>
+          </div>
 
-      {/* ── SHELF 2: Trophies ── */}
-      <div style={{ display:"flex", alignItems:"flex-end", gap:8, padding:"0 12px", height:56 }}>
-        {MOCK_TROPHIES.map((t,i)=>(
-          <Tip key={t.id} text={t.label} pos="bottom">
-            <div style={{
-              fontSize: t.earned ? 21 : 18,
-              filter: t.earned
-                ? "drop-shadow(0 0 7px rgba(255,200,80,.8))"
-                : "grayscale(1) opacity(.22)",
-              cursor: t.earned ? "pointer" : "not-allowed",
-              animation: t.earned ? `trophyFloat ${2.4+i*.35}s ease-in-out infinite` : "none",
-              lineHeight:1,
-            }}>{t.emoji}</div>
-          </Tip>
-        ))}
-      </div>
-      {/* <ShelfBoard /> */}
-    </div>
+          {/* Header */}
+          <div style={{
+            background: "linear-gradient(#8B6020, #5C3F14)",
+            padding: "22px 20px 14px",
+            textAlign: "center",
+            borderBottom: "2px solid #C8903C",
+          }}>
+            <div style={{ 
+              color: "#F5DEB3", 
+              fontFamily: "'Cormorant Garamond', serif", 
+              fontSize: "22px",
+              letterSpacing: "1.5px"
+            }}>
+              Our Team
+            </div>
+            <div style={{ color: "#E8D5A3", fontSize: "12px", marginTop: "4px" }}>
+              Connect • Collaborate • Create
+            </div>
+          </div>
+
+          {/* Scrollable Parchment Content */}
+          <div style={{
+            maxHeight: "380px",
+            overflowY: "auto",
+            padding: "24px 20px",
+            background: "repeating-linear-gradient(#F5E8C7, #F5E8C7 28px, #EDE0B8 28px, #EDE0B8 29px)",
+            fontFamily: "'Lora', serif",
+          }}>
+            {teamProfiles.map((member, i) => (
+              <div key={i} style={{
+                marginBottom: i === teamProfiles.length - 1 ? 0 : "18px",
+                padding: "16px",
+                background: "rgba(255,255,255,0.75)",
+                border: "1px solid #C8903C",
+                borderRadius: "8px",
+                boxShadow: "inset 0 2px 6px rgba(0,0,0,0.1)"
+              }}>
+                <div style={{ fontSize: "17px", fontWeight: 600, color: "#3C2F1E", marginBottom: "4px" }}>
+                  {member.name}
+                </div>
+                <div style={{ color: "#8B6020", fontSize: "13px", marginBottom: "10px" }}>
+                  {member.role}
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
+                  <a href={member.linkedin} target="_blank" rel="noopener noreferrer"
+                    style={{ color: "#0A66C2", textDecoration: "none", fontSize: "14px" }}>
+                    → LinkedIn
+                  </a>
+                  <a href={member.github} target="_blank" rel="noopener noreferrer"
+                    style={{ color: "#24292E", textDecoration: "none", fontSize: "14px" }}>
+                    → GitHub
+                  </a>
+                  <a href={member.instagram} target="_blank" rel="noopener noreferrer"
+                    style={{ color: "#E1306C", textDecoration: "none", fontSize: "14px" }}>
+                    → Instagram
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer with close button */}
+          <div style={{
+            padding: "14px 20px",
+            background: "#EDE0B8",
+            borderTop: "2px solid #8B6020",
+            display: "flex",
+            justifyContent: "center",
+          }}>
+            <button 
+              onClick={() => setShowContactCard(false)}
+              style={{
+                background: "#8B6020",
+                color: "#F5DEB3",
+                border: "none",
+                padding: "8px 24px",
+                borderRadius: "20px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontFamily: "'Lora', serif",
+                boxShadow: "0 3px 8px rgba(0,0,0,0.3)"
+              }}
+            >
+              Close Scroll
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -843,6 +1463,65 @@ const STARS = [
 export default function LofiDashboard() {
   const [toast,setToast] = useState(null);
   const [dark,  setDark ] = useState(false);
+  const [user, setUser] = useState({ name: "", avatar: null });
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Load real user from backend on mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    api.get("/auth/me")
+      .then(res => setUser(res.data.user))
+      .catch(err => {
+        console.error("Failed to load user:", err);
+        // Fallback: try localStorage
+        const stored = localStorage.getItem("user");
+        if (stored) setUser(JSON.parse(stored));
+      });
+  }, []);
+
+  const handleEditPhoto = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 2 * 1024 * 1024) {
+        show("❌ Image must be under 2MB");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      setIsUploading(true);
+
+      try {
+        const res = await api.post("/auth/avatar", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            // ⚠️ If your axios instance already attaches the token, you're done.
+            // If not, add: Authorization: `Bearer ${localStorage.getItem("token")}`
+          },
+        });
+
+        setUser(prev => ({ ...prev, avatar: res.data.avatar }));
+        show("✅ Profile photo updated!");
+      } catch (err) {
+        console.error("Upload failed:", err);
+        show("❌ Upload failed. Try again.");
+      } finally {
+        setIsUploading(false);
+      }
+    };
+
+    input.click();
+  };
+
   const show = m => setToast(m);
   const lamp = GENRE_LAMP[LATEST_GENRE] || GENRE_LAMP.fantasy;
 
@@ -1194,14 +1873,40 @@ export default function LofiDashboard() {
 
         {/* ── INTERACTIVE / ANIMATED ELEMENTS ────────────────────────── */}
 
-        {/* Portrait frame on wall (replaces night reads art) */}
-        <PortraitFrame user={MOCK_USER} onEdit={()=>show(MOCK_USER.avatar?"✏️ Edit your profile photo":"📷 Upload a profile photo")}/>
+       
+          {/* <PortraitFrame
+            user={user}
+            onEdit={() => show(user.avatar ? "✏️ Edit your profile photo" : "📷 Upload a profile photo")}
+            onEditName={(newName) => {
+              const updated = { ...user, name: newName };
+              setUser(updated);
+              localStorage.setItem("lofi_user", JSON.stringify(updated));
+              show("✨ Name updated!");
+            }}
+          /> */}
 
+          <PortraitFrame
+  user={user}
+  onEdit={handleEditPhoto}
+  isUploading={isUploading}
+  onEditName={async (newName) => {
+    try {
+      await api.patch("/auth/update-name", { name: newName });
+      setUser(prev => ({ ...prev, name: newName }));
+      show("✨ Name updated!");
+    } catch (err) {
+      show("❌ Failed to update name");
+    }
+  }}
+/>
+
+      
+  
         {/* Wall clock */}
         <WallClock session={MOCK_USER}/>
 
         {/* Streak calendar (real, with streak dots) */}
-        <StreakCalendar streakDays={MOCK_STREAK}/>
+        <StreakCalendar/>
 
         {/* The two shelves */}
         <Shelves onNav={page=>show(`📖 Navigating to ${page}…`)}/>
@@ -1215,7 +1920,7 @@ export default function LofiDashboard() {
        
 
         {/* Emotion lamp */}
-        <EmotionLamp genre={LATEST_GENRE}/>
+        {/* <EmotionLamp genre={LATEST_GENRE}/> */}
 
         {/* Laptop ON the desk */}
         <Laptop onClick={()=>show("✨ Starting a new tale!")}/>
