@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import bg from '../assets/bg.png';
 import { useNavigate } from "react-router-dom";
+import { signupUser } from "../services/authService";
+import { GoogleLogin } from "@react-oauth/google";
+import api from "../api/axios";
 const GRANDMA=bg;
 const GoogleIcon = () => (
   <svg width="17" height="17" viewBox="0 0 24 24">
@@ -70,8 +73,10 @@ function Field({ label, icon, type, id, placeholder, value, onChange, right }) {
 }
 
 export default function TaleTreasuryLogin() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rePass, setRePass] = useState("")
   const [showPwd, setShowPwd] = useState(false);
   const [showRePwd, setShowRePwd] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -79,7 +84,7 @@ export default function TaleTreasuryLogin() {
   const [bookOpen, setBookOpen] = useState(false);
   const [contentVisible, setContentVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [rePass,setRePass]=useState("")
+  const [error, setError] = useState("");
 useEffect(() => {
   const handleResize = () => setIsMobile(window.innerWidth < 768);
   window.addEventListener("resize", handleResize);
@@ -102,23 +107,49 @@ useEffect(() => {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => { setLoading(false); setSuccess(true); }, 1800);
-  };
-  const navigate=useNavigate();
-  function moveToSignup(){navigate('/')}
-  const handleClick = (e) => {
+  // const handleSubmit = (e) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   setTimeout(() => { setLoading(false); setSuccess(true); }, 1800);
+  // };
+  function moveToLogin(){navigate('/')}
+  
+const handlesubmit = async (e) => {
   e.preventDefault();
+
+  if ( !email || !password) {
+    setError("Please fill all fields");
+    return;
+  }
+
   setLoading(true);
-  setTimeout(() => {
-    setLoading(false);
-    setSuccess(true);         // shows the right page animation
+  setError("");
+
+  try {
+    if (password !== rePass) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    const data = await signupUser({
+      email,
+      password,
+    });
+
+    setSuccess(true);
+
     setTimeout(() => {
-      navigate("/dashboard"); // navigates after animation plays
-    }, 2000);
-  }, 1200);
+      navigate("/");
+    }, 1500);
+
+  } catch (err) {
+    const message =
+      err.response?.data?.message || "Signup failed";
+
+    setError(message);
+  } finally {
+    setLoading(false);
+  }
 };
   return (
     <>
@@ -511,7 +542,7 @@ useEffect(() => {
                       Your story awaits — sign up to continue the adventure.
                     </p>
 
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handlesubmit}>
                       <Field
                         label="Your Scroll Name" id="email" type="email"
                         placeholder="e.g. avid.reader@tales.com"
@@ -570,7 +601,7 @@ useEffect(() => {
                         }
                       />
 
-                      <button type="submit" className="btn-primary" disabled={loading} onClick={handleClick}>
+                      <button type="submit" className="btn-primary" disabled={loading}>
                         <div className="btn-shine" />
                         {loading ? (
                           <div className="btn-inner">
@@ -601,13 +632,22 @@ useEffect(() => {
                         <div style={{ flex: 1, height: 1, background: "rgba(180,130,50,0.22)" }} />
                       </div>
 
-                      <button type="button" className="btn-google">
-                        <GoogleIcon />
-                        Continue with Google
-                      </button>
+                      <GoogleLogin
+                          onSuccess={async (credentialResponse) => {
+                          const token = credentialResponse.credential;
+
+                           const res = await api.post("/auth/google", {token,});
+                           localStorage.setItem("token", res.data.token);
+                           navigate("/dashboard");
+                                              }
+                              }
+                      onError={() => {
+                        console.log("Login Failed");
+                      }}
+                    />
                     </form>
 
-                    <div style={{
+                    { <div style={{
                       marginTop: 16, padding: "11px 14px",
                       background: "rgba(196,154,46,0.07)",
                       border: "1px solid rgba(196,154,46,0.2)", borderRadius: 8,
@@ -617,18 +657,18 @@ useEffect(() => {
                         fontFamily: "'Cormorant Garamond', serif",
                         fontSize: 14, fontStyle: "italic", color: "#7A5A28",
                       }}>
-                        First time at the library?{" "}
+                        Been here before?{" "}
                         <button type="button" style={{
                           background: "none", border: "none", cursor: "pointer",
                           fontFamily: "'Playfair Display', serif", fontStyle: "italic",
                           fontWeight: 700, fontSize: 14.5, color: "#6B3E10",
                           textDecoration: "underline", textDecorationStyle: "dotted",
                           textUnderlineOffset: "2px", padding: 0, transition: "color 0.2s",
-                        }} onClick={moveToSignup}>
+                        }} onClick={moveToLogin}>
                           Continue your tale →
                         </button>
                       </span>
-                    </div>
+                    </div> }
                   </>
                 ) : (
                   <div style={{ textAlign: "center", padding: "28px 8px", animation: "fadeUp 0.5s ease both" }}>

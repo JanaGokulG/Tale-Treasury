@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import AboutPage from "../components/AboutPage";
+import api from "../api/axios";
 
 /* ─────────────────────────────────────────────────────────────────────────
    MOCK DATA
@@ -789,7 +791,23 @@ function NavCard({ onNav }) {
 export default function LofiDashboardSmall() {
   const [dark,  setDark ] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showAbout, setShowAbout] = useState(false);
+  const [user, setUser] = useState({ name: "", avatar: null });
   const show = m => setToast(m);
+
+  // Load real user from backend on mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    api.get("/auth/me")
+      .then(res => setUser(res.data.user))
+      .catch(err => {
+        console.error("Failed to load user:", err);
+        const stored = localStorage.getItem("user");
+        if (stored) setUser(JSON.parse(stored));
+      });
+  }, []);
 
   // Theme surface overrides for dark mode
   useEffect(() => {
@@ -822,7 +840,7 @@ export default function LofiDashboardSmall() {
         <RoomHeader
           dark={dark}
           onToggleDark={() => setDark(d => !d)}
-          user={MOCK_USER}
+          user={user}
           genre={LATEST_GENRE}
         />
 
@@ -855,11 +873,17 @@ export default function LofiDashboardSmall() {
           <MoodCard/>
 
           {/* Row 4: Nav + Deleted */}
-          <NavCard onNav={page => show(`📖 Navigating to ${page}…`)}/>
+          <NavCard onNav={page => {
+            if (page === "About") setShowAbout(true);
+            else show(`📖 Navigating to ${page}…`);
+          }}/>
           <DeletedCard deleted={MOCK_DELETED}/>
         </div>
 
         {toast && <Toast msg={toast} onClose={() => setToast(null)}/>}
+
+        {/* About Page Overlay */}
+        {showAbout && <AboutPage onClose={() => setShowAbout(false)} />}
       </div>
     </>
   );
