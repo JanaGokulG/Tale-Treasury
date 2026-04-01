@@ -124,7 +124,7 @@ const CSS = `
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 9px;
+    font-size: 15px;
     font-family: 'Lora', serif;
   }
 
