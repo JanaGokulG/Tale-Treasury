@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useLottie } from "lottie-react";
 import catanimation from '../assets/cat.json';
 import api from "../api/axios";
+import { useNavigate } from "react-router-dom";
+
 
 
 /* ── MOCK DATA ──────────────────────────────────────────────────────────── */
@@ -1461,6 +1463,8 @@ const STARS = [
   { cx: 150, cy: 190, r: 0.5, op: 0.28, delay: 3.5 },
 ];
 export default function LofiDashboard() {
+    const navigate=useNavigate();
+
   const [toast,setToast] = useState(null);
   const [dark,  setDark ] = useState(false);
   const [user, setUser] = useState({ name: "", avatar: null });
@@ -1923,7 +1927,8 @@ export default function LofiDashboard() {
         {/* <EmotionLamp genre={LATEST_GENRE}/> */}
 
         {/* Laptop ON the desk */}
-        <Laptop onClick={()=>show("✨ Starting a new tale!")}/>
+        
+        <Laptop onClick={()=>navigate('/InteractiveStory')}/>
 
         {/* Archive box */}
         <ArchiveBox onClick={()=>show("📦 Opening Story Archive…")}/>
