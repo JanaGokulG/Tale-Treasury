@@ -1089,8 +1089,8 @@ function Laptop({ onClick }) {
       style={{
         position: "absolute",
         /* desk top is at ~61% of viewport height; laptop base should sit on it */
-        bottom: "37%",
-        right: "30%",
+        bottom: "36%",
+        right: "32%",
         cursor: "pointer",
         filter: hov ? "brightness(1.12)" : "none",
         transition: "filter .25s",
