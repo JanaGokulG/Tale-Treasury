@@ -884,11 +884,11 @@ function Shelves({ onNav }) {
       instagram: "https://instagram.com/teammate1"
     },
     {
-      name: "Full Stack Developer",
+      name: "Jana Gokul G",
       role: "Backend Engineer",
-      linkedin: "https://linkedin.com/in/teammate2",
-      github: "https://github.com/teammate2",
-      instagram: "https://instagram.com/teammate2"
+      linkedin: "https://www.linkedin.com/in/janagokulg/",
+      github: "https://github.com/janagokulg",
+      instagram: "https://www.instagram.com/itz_me_janagokul/"
     }
   ];
 
