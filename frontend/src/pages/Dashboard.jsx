@@ -95,6 +95,9 @@ function PortraitFrame({ user, onEdit, onEditName, isUploading }) {
     }
     setEditingName(false);
   };
+   useEffect(() => {
+    setNameVal(user?.name || "");
+  }, [user?.name]);
 
   return (
     <div
