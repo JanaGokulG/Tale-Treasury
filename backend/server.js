@@ -8,6 +8,7 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import storyRoutes from "./routes/storyRoutes.js";
+import trophyRoutes from "./routes/trophyRoutes.js";   // ← add
 
 
 
@@ -26,6 +27,7 @@ app.use(express.json());
 
 // routes
 app.use("/api/auth", authRoutes);
+app.use("/api/trophies", trophyRoutes);                 // ← add
 
 // test route
 app.get("/", (req, res) => {

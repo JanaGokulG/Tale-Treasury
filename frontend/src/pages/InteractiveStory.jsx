@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import jsPDF from "jspdf";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const PARCHMENT = "#f5e6c8";
 const INK = "#2c1a0e";
@@ -499,6 +500,27 @@ const styles = `
 
   .modal-btn-secondary:hover { background: rgba(184,134,11,0.08); border-color: ${GOLD}; }
 
+  .back-to-dashboard-btn {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    background: transparent;
+    border: 1px solid ${GOLD}50;
+    color: ${GOLD_LIGHT};
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 100;
+  }
+  .back-to-dashboard-btn:hover {
+    background: rgba(184,134,11,0.15);
+    border-color: ${GOLD};
+    transform: translateX(-2px);
+  }
+
   @media (max-width: 560px) {
     .scroll-inner { padding: 26px 26px 34px; }
     .genre-grid { grid-template-columns: repeat(4, 1fr); }
@@ -675,6 +697,8 @@ const exportToPDF = (storyTitle, storySegments, currentText, genre, ageGroup) =>
 };
 
 export default function ScrollStoryPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [scrollOpen, setScrollOpen] = useState(false);
   const [genre, setGenre] = useState("Fantasy");
   const [ageGroup, setAgeGroup] = useState("7–9 yrs");
@@ -702,6 +726,36 @@ export default function ScrollStoryPage() {
   useEffect(() => {
     const t = setTimeout(() => setScrollOpen(true), 300);
     (async () => {
+      if (location.state?.viewStory) {
+        // Read mode for archived story
+        const vs = location.state.viewStory;
+        setGenre(vs.genre || "Fantasy");
+        setAgeGroup(vs.ageGroup || "");
+        setPrompt(vs.prompt || "");
+        setStoryTitle(vs.storyTitle || "Archived Tale");
+        
+        const segments = [];
+        let finalT = "";
+        if (vs.chapters) {
+           // keys might be "0", "1", "final"
+           const keys = Object.keys(vs.chapters).sort();
+           for (const k of keys) {
+              if (k === "final") {
+                 finalT = vs.chapters[k].text;
+              } else {
+                 segments.push(vs.chapters[k]);
+              }
+           }
+        }
+        setStorySegments(segments);
+        setCurrentText(vs.finalText || finalT);
+        setWordCount(vs.wordCount || 0);
+        setIsFinalChapter(true);
+        setStoryDone(true);
+        setPhase("story");
+        return; // skip fetching session
+      }
+
       const session = await fetchSession();
       if (session && session.isGenerating && session.phase !== "setup") {
         // Was mid-generation when user left
@@ -1012,7 +1066,7 @@ CHOICE 2: [Specific action, 5–12 words, no question marks]`;
     finalText: parsed.story,
     wordCount,
   });
-  await saveSession({ ...sessionPatch, isGenerating: false, currentText: parsed.story, choices: [], storyDone: true });
+  await clearSession();
 } else {
         const fc = parsed.choices.length === 2 ? parsed.choices : [];
         setChoices(fc);
@@ -1087,6 +1141,9 @@ CHOICE 2: [Specific action, 5–12 words, no question marks]`;
       )}
 
       <div className="page-bg">
+        <button className="back-to-dashboard-btn" onClick={() => navigate('/dashboard')}>
+          ← Back to Dashboard
+        </button>
         <div className="title-area">
           <h1>The Story Scroll</h1>
           <div className="gold-divider" />
@@ -1196,12 +1253,17 @@ CHOICE 2: [Specific action, 5–12 words, no question marks]`;
                         <span className="stat-item">{ageGroup} · {genre}</span>
                       </div>
                       {storyDone && (
-                        <button
-                          className="export-btn"
-                          onClick={() => exportToPDF(storyTitle, storySegments, currentText, genre, ageGroup)}
-                        >
-                          📄 Export Story as PDF
-                        </button>
+                        <>
+                          <button
+                            className="export-btn"
+                            onClick={() => exportToPDF(storyTitle, storySegments, currentText, genre, ageGroup)}
+                          >
+                            📄 Export Story as PDF
+                          </button>
+                          <button className="new-story-btn" onClick={() => navigate('/dashboard')}>
+                            ← Return to Dashboard
+                          </button>
+                        </>
                       )}
                       <button className="new-story-btn" onClick={resetStory}>🪶 Begin a new tale</button>
                     </>

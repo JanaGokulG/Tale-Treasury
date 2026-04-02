@@ -6,15 +6,10 @@ export default function DashboardSwitch() {
   const [isMobile, setIsMobile] = useState(null);
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 1025px)");
-
-    const update = () => setIsMobile(media.matches);
-
-    update(); // set initial value
-
-    media.addEventListener("change", update);
-
-    return () => media.removeEventListener("change", update);
+    const checkMobile = () => setIsMobile(window.innerWidth <= 1025);
+    checkMobile(); // set initial value
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // prevent flicker before detection

@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import cloudinary from "../config/cloudinary.js";
 import { Readable } from "stream";
+import { checkAndAwardTrophies } from "../services/trophyService.js";
 
 const updateLoginStreak = async (user) => {
   const today = new Date();
@@ -133,7 +134,7 @@ export const login = async (req, res) => {
       });
     }
     await updateLoginStreak(user);
-
+    await checkAndAwardTrophies(user._id);
     // 4. Generate token
     const token = jwt.sign(
       { id: user._id },
@@ -193,6 +194,7 @@ export const googleAuth = async (req, res) => {
     }
 
     await updateLoginStreak(user);
+    await checkAndAwardTrophies(user._id);   // ← add this line only
 
     // 4. Generate JWT
     const appToken = jwt.sign(

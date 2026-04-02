@@ -65,3 +65,13 @@ export const getCompletedStories = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch completed stories" });
   }
 };
+
+export const deleteCompletedStory = async (req, res) => {
+  try {
+    const deleted = await CompletedStory.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    if (!deleted) return res.status(404).json({ message: "Story not found" });
+    res.json({ success: true, message: "Story deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to delete completed story" });
+  }
+};
