@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import bg from '../assets/bg.png';
 import { useNavigate } from "react-router-dom";
+import { loginUser } from "../services/authService";
+import { GoogleLogin } from "@react-oauth/google";
+import api from "../api/axios";
 const GRANDMA=bg;
 const GoogleIcon = () => (
   <svg width="17" height="17" viewBox="0 0 24 24">
@@ -70,6 +73,7 @@ function Field({ label, icon, type, id, placeholder, value, onChange, right }) {
 }
 
 export default function TaleTreasuryLogin() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
@@ -78,6 +82,8 @@ export default function TaleTreasuryLogin() {
   const [bookOpen, setBookOpen] = useState(false);
   const [contentVisible, setContentVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [error, setError] = useState("");
+
 
 useEffect(() => {
   const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -101,24 +107,44 @@ useEffect(() => {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => { setLoading(false); setSuccess(true); }, 1800);
-  };
-  const navigate=useNavigate();
-  function moveToSignup(){navigate('/signup')}
-  const handleClick = (e) => {
+ const handleSubmit = async (e) => {
   e.preventDefault();
+
+  if (!email || !password) {
+    setError("Please fill all fields");
+    return;
+  }
+
   setLoading(true);
-  setTimeout(() => {
-    setLoading(false);
-    setSuccess(true);         // shows the right page animation
+  setError("");
+
+  try {
+    const data = await loginUser({
+      email,
+      password,
+    });
+
+    // 🔐 Store token
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    setSuccess(true);
+
     setTimeout(() => {
-      navigate("/dashboard"); // navigates after animation plays
-    }, 2000);
-  }, 1200);
+      navigate("/dashboard");
+    }, 1500);
+
+  } catch (err) {
+    const message = err.response?.data?.message || "Login failed";
+    console.log(message)
+
+    setError(message);
+  } finally {
+    setLoading(false);
+  }
 };
+  function moveToSignup(){navigate('/signup')}
+  
   return (
     <>
       <style>{`
@@ -509,6 +535,7 @@ useEffect(() => {
                     }}>
                       Your story awaits — sign in to continue the adventure.
                     </p>
+                             {error && <p style={{ color: "red" }}>{error}</p>}
 
                     <form onSubmit={handleSubmit}>
                       <Field
@@ -549,7 +576,7 @@ useEffect(() => {
                         </button>
                       </div>
 
-                      <button type="submit" className="btn-primary" disabled={loading} onClick={handleClick}>
+                      <button type="submit" className="btn-primary" disabled={loading}>
                         <div className="btn-shine" />
                         {loading ? (
                           <div className="btn-inner">
@@ -580,11 +607,21 @@ useEffect(() => {
                         <div style={{ flex: 1, height: 1, background: "rgba(180,130,50,0.22)" }} />
                       </div>
 
-                      <button type="button" className="btn-google">
-                        <GoogleIcon />
-                        Continue with Google
-                      </button>
+                      <GoogleLogin
+                          onSuccess={async (credentialResponse) => {
+                          const token = credentialResponse.credential;
+
+                           const res = await api.post("/auth/google", {token,});
+                           localStorage.setItem("token", res.data.token);
+                           navigate("/dashboard");
+                                              }
+                              }
+                      onError={() => {
+                        console.log("Login Failed");
+                      }}
+                    />
                     </form>
+
 
                     <div style={{
                       marginTop: 16, padding: "11px 14px",

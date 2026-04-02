@@ -1,7 +1,5 @@
 {
   "dependencies": {
-    "animate.css": "^4.1.1",
-    "bootstrap": "^5.3.8",
-    "react-router-dom": "^7.13.1"
+    "@react-oauth/google": "^0.13.4"
   }
 }

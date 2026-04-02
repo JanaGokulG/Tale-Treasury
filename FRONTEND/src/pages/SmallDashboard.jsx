@@ -1,34 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import AboutPage from "../components/AboutPage";
+import api from "../api/axios";
 
 /* ─────────────────────────────────────────────────────────────────────────
-   MOCK DATA
+   CONSTANTS  (no mock user/streak/deleted — all come from backend)
 ───────────────────────────────────────────────────────────────────────── */
-const MOCK_USER = {
-  name: "Arya",
-  avatar: null,
-  minutesThisSession: 42,
-  isConsistent: true,
-};
-const MOCK_TROPHIES = [
-  { id:1, emoji:"📖", label:"First Story Read",                    earned:true  },
-  { id:2, emoji:"🌙", label:"Night Owl – 3 stories after midnight",earned:true  },
-  { id:3, emoji:"🔥", label:"7-Day Streak",                        earned:false },
-  { id:4, emoji:"✨", label:"Story Weaver – 5 tales generated",    earned:false },
-  { id:5, emoji:"🌟", label:"Archive Keeper",                      earned:false },
-  { id:6, emoji:"🎭", label:"Genre Explorer",                      earned:false },
+const TROPHIES_DEFINITIONS = [
+  { id:1, emoji:"📖", label:"First Story Read"                    },
+  { id:2, emoji:"🌙", label:"Night Owl – 3 stories after midnight"},
+  { id:3, emoji:"🔥", label:"7-Day Streak"                        },
+  { id:4, emoji:"✨", label:"Story Weaver – 5 tales generated"    },
+  { id:5, emoji:"🌟", label:"Archive Keeper"                      },
+  { id:6, emoji:"🎭", label:"Genre Explorer"                      },
 ];
-const MOCK_STREAK = [
-  true,true,false,true,true,true,false,
-  true,true,true,true,false,true,true,
-  false,true,true,true,true,true,false,
-  true,true,false,true,true,true,true,
-  true,true,
-];
-const MOCK_DELETED = [
-  { id:1, title:"The Lighthouse at the Edge of Memory" },
-  { id:2, title:"A Fox Who Learned to Forgive" },
-];
+
 const LATEST_GENRE = "mystery";
+
 const GENRE_LAMP = {
   fantasy:   { glow:"#FFD580", color:"#FFC940", label:"Fantasy"   },
   mystery:   { glow:"#B388FF", color:"#9C6FFF", label:"Mystery"   },
@@ -64,7 +51,6 @@ const CSS = `
     overflow-x: hidden;
   }
 
-  /* ── room header ── */
   .lf-header {
     position: relative;
     width: 100%;
@@ -82,7 +68,6 @@ const CSS = `
     gap: 14px;
   }
 
-  /* ── card grid ── */
   .lf-grid {
     max-width: 900px;
     margin: 0 auto;
@@ -127,7 +112,6 @@ const CSS = `
     font-style: italic;
   }
 
-  /* ── streak calendar ── */
   .cal-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -140,11 +124,10 @@ const CSS = `
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 9px;
+    font-size: 15px;
     font-family: 'Lora', serif;
   }
 
-  /* ── trophies ── */
   .trophy-grid {
     display: flex;
     flex-wrap: wrap;
@@ -163,12 +146,8 @@ const CSS = `
     cursor: default;
     position: relative;
   }
-  .trophy-item__emoji {
-    font-size: 22px;
-    line-height: 1;
-  }
+  .trophy-item__emoji { font-size: 22px; line-height: 1; }
 
-  /* ── mood lamp ── */
   .mood-orb {
     width: 52px; height: 52px;
     border-radius: 50%;
@@ -178,7 +157,6 @@ const CSS = `
     transition: box-shadow .4s;
   }
 
-  /* ── toast ── */
   .lf-toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     background: rgba(14,6,2,.97); color: var(--warm-cream);
@@ -195,31 +173,18 @@ const CSS = `
     to   { opacity:1; transform:translateX(-50%) translateY(0); }
   }
 
-  /* ── clock ── */
-  .lf-clock-ring {
-    animation: secondPulse 1s ease-in-out infinite;
-  }
-  @keyframes secondPulse { 0%,100%{opacity:.9} 50%{opacity:.6} }
-
-  /* ── lantern toggle ── */
-  .lantern-cage {
-    transition: box-shadow .4s ease;
-  }
-  .lantern-flame {
-    animation: flicker 1.3s ease-in-out infinite;
-  }
+  .lantern-cage { transition: box-shadow .4s ease; }
+  .lantern-flame { animation: flicker 1.3s ease-in-out infinite; }
   @keyframes flicker {
     0%,100%{opacity:1;transform:scaleY(1) scaleX(1);}
     33%{opacity:.85;transform:scaleY(.9) scaleX(1.1);}
     66%{opacity:.95;transform:scaleY(1.1) scaleX(.95);}
   }
 
-  /* ── room header scene elements ── */
   @keyframes sway { 0%,100%{transform:rotate(-3deg)} 50%{transform:rotate(3deg)} }
   @keyframes pulse-glow { 0%,100%{opacity:.7} 50%{opacity:1} }
   @keyframes trophyFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
 
-  /* ── scrollbar ── */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: var(--warm-bg); }
   ::-webkit-scrollbar-thumb { background: rgba(200,144,60,.3); border-radius: 3px; }
@@ -228,7 +193,6 @@ const CSS = `
 /* ─────────────────────────────────────────────────────────────────────────
    SMALL COMPONENTS
 ───────────────────────────────────────────────────────────────────────── */
-
 function Toast({ msg, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3200); return () => clearTimeout(t); }, [onClose]);
   return (
@@ -239,7 +203,6 @@ function Toast({ msg, onClose }) {
   );
 }
 
-/* ── Tooltip ── */
 function Tip({ children, text }) {
   const [show, setShow] = useState(false);
   return (
@@ -261,25 +224,77 @@ function Tip({ children, text }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   ROOM HEADER — mini illustrated scene
+   ROOM HEADER
 ───────────────────────────────────────────────────────────────────────── */
-function RoomHeader({ dark, onToggleDark, user, genre }) {
+function RoomHeader({ dark, onToggleDark, user, genre, onAvatarUpload, onNameSave }) {
   const lamp = GENRE_LAMP[genre] || GENRE_LAMP.fantasy;
   const [now, setNow] = useState(new Date());
+  const [showSession, setShowSession] = useState(false);
+  const [loginTime, setLoginTime] = useState(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameVal, setNameVal]         = useState(user.name || "");
+  const [nameSaving, setNameSaving]   = useState(false);
+  const fileInputRef = useState(null);
+
+  // keep nameVal in sync when user prop updates
+  useEffect(() => { setNameVal(user.name || ""); }, [user.name]);
+
   useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
 
+  // Read the same localStorage key Dashboard.jsx sets — so both show identical session time
+  useEffect(() => {
+    const STORAGE_KEY = "userLoginTimestamp";
+    let saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) {
+      saved = Date.now().toString();
+      localStorage.setItem(STORAGE_KEY, saved);
+    }
+    setLoginTime(parseInt(saved, 10));
+  }, []);
+
   const s = now.getSeconds(), m = now.getMinutes(), h = now.getHours() % 12;
-  const pt = (deg, r) => { const a = (deg - 90) * Math.PI / 180; return [50 + r * Math.cos(a), 50 + r * Math.sin(a)]; };
+  const pt = (deg, r) => { const a = (deg - 90) * Math.PI / 180; return [40 + r * Math.cos(a), 40 + r * Math.sin(a)]; };
   const [hx, hy] = pt(h * 30 + m * 0.5, 16);
   const [mx, my] = pt(m * 6 + s * 0.1, 22);
   const [sx, sy] = pt(s * 6, 26);
+
+  const sessionSecs = loginTime ? Math.floor((now.getTime() - loginTime) / 1000) : 0;
+  const sesH = Math.floor(sessionSecs / 3600);
+  const sesM = Math.floor((sessionSecs % 3600) / 60);
+  const sesS = sessionSecs % 60;
+  const sessionLabel = sesH > 0
+    ? `${sesH}h ${String(sesM).padStart(2,"0")}m`
+    : `${String(sesM).padStart(2,"0")}:${String(sesS).padStart(2,"0")}`;
+
+  const handleClockClick = () => setShowSession(v => !v);
+
+  const handleAvatarClick = () => {
+    const inp = document.createElement("input");
+    inp.type = "file"; inp.accept = "image/*";
+    inp.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append("avatar", file);
+      try { await onAvatarUpload(formData); } catch {}
+    };
+    inp.click();
+  };
+
+  const handleNameSave = async () => {
+    if (!nameVal.trim()) return;
+    setNameSaving(true);
+    try { await onNameSave(nameVal.trim()); } finally {
+      setNameSaving(false);
+      setEditingName(false);
+    }
+  };
 
   const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
   const greetIcon = now.getHours() < 12 ? "☀️" : now.getHours() < 17 ? "🌤️" : "🌙";
 
   return (
     <div className="lf-header">
-      {/* Skylight gradient strip */}
       <div style={{
         height: 6,
         background: dark
@@ -288,9 +303,7 @@ function RoomHeader({ dark, onToggleDark, user, genre }) {
         opacity: .7,
       }}/>
 
-      {/* Scene SVG */}
-      <svg viewBox="0 0 900 160" style={{ width:"100%", display:"block" }}
-        preserveAspectRatio="xMidYMid meet">
+      <svg viewBox="0 0 900 160" style={{ width:"100%", display:"block" }} preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="roomWall" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%"  stopColor={dark?"#0C0918":"#FFF8E6"}/>
@@ -308,7 +321,6 @@ function RoomHeader({ dark, onToggleDark, user, genre }) {
           )}
         </defs>
 
-        {/* Wall */}
         <rect width="900" height="160" fill="url(#roomWall)"/>
 
         {/* Window */}
@@ -316,27 +328,25 @@ function RoomHeader({ dark, onToggleDark, user, genre }) {
         <rect x="30" y="12" width="160" height="130" rx="4" fill="none" stroke="#5A3010" strokeWidth="3"/>
         <line x1="110" y1="12" x2="110" y2="142" stroke="#5A3010" strokeWidth="2.5"/>
         <line x1="30" y1="77" x2="190" y2="77" stroke="#5A3010" strokeWidth="2.5"/>
-        {/* Window pane shimmer */}
         <rect x="32" y="14" width="77" height="62" rx="2" fill={dark?"rgba(80,100,220,.06)":"rgba(255,250,220,.14)"}/>
-        {/* Moon or sun in window */}
         {dark ? (
           <>
             <circle cx="155" cy="45" r="18" fill="#D8E8FF" opacity=".82"/>
-            <circle cx="144" cy="45" r="18" fill={dark?"#1828A0":"#B8E0FF"} opacity=".9"/>
+            <circle cx="144" cy="45" r="18" fill="#1828A0" opacity=".9"/>
           </>
         ) : (
           <circle cx="155" cy="45" r="16" fill="#FFE87A" opacity=".88"
             style={{ animation:"pulse-glow 4s ease-in-out infinite" }}/>
         )}
-        {/* Stars (dark) */}
         {dark && [[60,30],[90,55],[140,25],[170,60],[80,20],[120,40]].map(([cx,cy],i)=>(
           <circle key={i} cx={cx} cy={cy} r=".9" fill="#E8F0FF" opacity=".7"
             style={{ animation:`pulse-glow ${2+i*.4}s ease-in-out ${i*.3}s infinite` }}/>
         ))}
 
-        {/* Wall clock */}
-        <g transform="translate(220,20)">
-          <circle cx="40" cy="40" r="36" fill="#2E1C08" stroke="#C8903C" strokeWidth="2"/>
+        {/* Wall clock — click to toggle session duration */}
+        <g transform="translate(220,20)" onClick={handleClockClick}
+          style={{ cursor:"pointer" }}>
+          <circle cx="40" cy="40" r="36" fill="#2E1C08" stroke={showSession?"#FF8C42":"#C8903C"} strokeWidth="2"/>
           <circle cx="40" cy="40" r="31" fill="#200E04" stroke="rgba(200,144,60,.2)" strokeWidth="1"/>
           {[...Array(12)].map((_,i)=>{
             const a=(i*30-90)*Math.PI/180;
@@ -344,16 +354,26 @@ function RoomHeader({ dark, onToggleDark, user, genre }) {
               x2={40+(i%3===0?31:30)*Math.cos(a)} y2={40+(i%3===0?31:30)*Math.sin(a)}
               stroke="#C8903C" strokeWidth={i%3===0?2:1} strokeLinecap="round"/>;
           })}
-          <line x1="40" y1="40" x2={hx+10} y2={hy+10} stroke="#F5DEB3" strokeWidth="2.5" strokeLinecap="round"/>
-          <line x1="40" y1="40" x2={mx+10} y2={my+10} stroke="#F5DEB3" strokeWidth="1.8" strokeLinecap="round"/>
-          <line x1="40" y1="40" x2={sx+10} y2={sy+10} stroke="#FF8C42" strokeWidth="1" strokeLinecap="round"/>
-          <circle cx="40" cy="40" r="2.5" fill="#FF8C42"/>
-          <text x="40" y="65" textAnchor="middle" fill="rgba(200,144,60,.55)" fontFamily="serif" fontSize="8">
-            {now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
-          </text>
+          {showSession ? (
+            <>
+              <text x="40" y="36" textAnchor="middle" fill="#FF8C42" fontFamily="serif" fontSize="7" letterSpacing=".04em">Session</text>
+              <text x="40" y="48" textAnchor="middle" fill="#FFD580" fontFamily="serif" fontSize="11" fontWeight="bold">{sessionLabel}</text>
+              <text x="40" y="62" textAnchor="middle" fill="rgba(200,144,60,.5)" fontFamily="serif" fontSize="7">⏱ tap to close</text>
+            </>
+          ) : (
+            <>
+              <line x1="40" y1="40" x2={hx} y2={hy} stroke="#F5DEB3" strokeWidth="2.5" strokeLinecap="round"/>
+              <line x1="40" y1="40" x2={mx} y2={my} stroke="#F5DEB3" strokeWidth="1.8" strokeLinecap="round"/>
+              <line x1="40" y1="40" x2={sx} y2={sy} stroke="#FF8C42" strokeWidth="1" strokeLinecap="round"/>
+              <circle cx="40" cy="40" r="2.5" fill="#FF8C42"/>
+              <text x="40" y="65" textAnchor="middle" fill="rgba(200,144,60,.55)" fontFamily="serif" fontSize="8">
+                {now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
+              </text>
+            </>
+          )}
         </g>
 
-        {/* Hanging plant (left) */}
+        {/* Hanging plant */}
         <g style={{ transformOrigin:"310px 0", animation:"sway 4.5s ease-in-out infinite" }}>
           <line x1="310" y1="0" x2="310" y2="28" stroke="#8B6040" strokeWidth="1.5"/>
           <ellipse cx="310" cy="30" rx="11" ry="4" fill="#7A4A28"/>
@@ -363,22 +383,38 @@ function RoomHeader({ dark, onToggleDark, user, genre }) {
           ))}
         </g>
 
-        {/* Lamp glow orb */}
         <ellipse cx="380" cy="100" rx="60" ry="50" fill="url(#lampGlow)"/>
 
-        {/* Portrait frame */}
-        <g transform="translate(450,18)">
+        {/* Portrait frame — click to upload avatar */}
+        <g transform="translate(450,18)" onClick={handleAvatarClick} style={{ cursor:"pointer" }}>
           <rect x="0" y="0" width="72" height="88" rx="3" fill="#7A5030" stroke="#C8903C" strokeWidth="1.5"/>
           <rect x="4" y="4" width="64" height="80" rx="2" fill={dark?"#2A1808":"#3A2248"}/>
-          {/* silhouette */}
-          <circle cx="36" cy="28" r="13" fill="rgba(200,150,80,.3)"/>
-          <path d="M10 72c0-14 12-26 26-26s26 12 26 26" fill="rgba(200,150,80,.2)"/>
-          <text x="36" y="58" textAnchor="middle" fill="rgba(200,150,80,.45)" fontFamily="serif" fontSize="6" fontStyle="italic">
-            {user.name}
-          </text>
+          {user.avatar ? (
+            <image href={user.avatar} x="4" y="4" width="64" height="68" clipPath="url(#avatarClip)" preserveAspectRatio="xMidYMid slice"/>
+          ) : (
+            <>
+              <circle cx="36" cy="28" r="13" fill="rgba(200,150,80,.3)"/>
+              <path d="M10 72c0-14 12-26 26-26s26 12 26 26" fill="rgba(200,150,80,.2)"/>
+              <text x="36" y="58" textAnchor="middle" fill="rgba(200,144,60,.45)" fontFamily="serif" fontSize="8">tap to</text>
+              <text x="36" y="67" textAnchor="middle" fill="rgba(200,144,60,.45)" fontFamily="serif" fontSize="8">upload</text>
+            </>
+          )}
+          {/* upload hint overlay */}
+          <rect x="4" y="4" width="64" height="68" rx="2" fill="rgba(0,0,0,0)" stroke="none"
+            style={{ transition:"fill .2s" }}
+            onMouseEnter={e=>e.currentTarget.setAttribute("fill","rgba(0,0,0,.3)")}
+            onMouseLeave={e=>e.currentTarget.setAttribute("fill","rgba(0,0,0,0)")}/>
+          {/* Name plate */}
           <rect x="14" y="78" width="44" height="9" rx="2" fill="rgba(14,6,2,.8)" stroke="rgba(220,170,70,.35)" strokeWidth=".8"/>
-          <text x="36" y="85" textAnchor="middle" fill="#F5DEB3" fontFamily="serif" fontSize="7" letterSpacing=".06em">{user.name}</text>
+          <text x="36" y="85" textAnchor="middle" fill="#F5DEB3" fontFamily="serif" fontSize="7" letterSpacing=".06em">
+            {user.name || "…"}
+          </text>
         </g>
+        <defs>
+          <clipPath id="avatarClip">
+            <rect x="4" y="4" width="64" height="68" rx="2"/>
+          </clipPath>
+        </defs>
 
         {/* Dreamcatcher */}
         <g transform="translate(560,0)" style={{ transformOrigin:"0 0", animation:"sway 5.5s ease-in-out .8s infinite" }}>
@@ -399,10 +435,9 @@ function RoomHeader({ dark, onToggleDark, user, genre }) {
           ))}
         </g>
 
-        {/* Bookshelf strip */}
+        {/* Bookshelf */}
         <rect x="650" y="40" width="230" height="8" rx="2" fill="#5C3A1C" stroke="#7A5028" strokeWidth="1"/>
         <rect x="650" y="48" width="230" height="3" fill="rgba(0,0,0,.22)"/>
-        {/* Mini books */}
         {[
           {x:658,h:36,c:"#B03020",s:"#7A1A10",w:14},
           {x:673,h:42,c:"#2E6B32",s:"#1A4A1E",w:11},
@@ -416,7 +451,6 @@ function RoomHeader({ dark, onToggleDark, user, genre }) {
           {x:779,h:41,c:"#1565C0",s:"#0D3D80",w:10},
           {x:790,h:37,c:"#C84030",s:"#8B2A1A",w:13},
           {x:804,h:35,c:"#3A7A3A",s:"#224A22",w:11},
-          // leaning
           {x:816,h:42,c:"#7A5030",s:"#5A3018",w:9,tilt:14},
           {x:824,h:38,c:"#3A5A38",s:"#253D25",w:7,tilt:-8},
         ].map((b,i)=>(
@@ -424,19 +458,15 @@ function RoomHeader({ dark, onToggleDark, user, genre }) {
             fill={b.c} stroke={b.s} strokeWidth=".8"
             transform={b.tilt?`rotate(${b.tilt},${b.x+b.w/2},${40})`:""}/>
         ))}
-        {/* Trophy row */}
+
+        {/* Trophy shelf — all unearned until backend provides data */}
         <rect x="650" y="104" width="230" height="7" rx="2" fill="#5C3A1C" stroke="#7A5028" strokeWidth="1"/>
-        {MOCK_TROPHIES.map((t,i)=>(
-          <text key={t.id} x={665+i*34} y="101" textAnchor="middle"
-            fontSize={t.earned?18:15}
-            opacity={t.earned?1:.2}
-            style={{ filter: t.earned?"drop-shadow(0 0 5px rgba(255,200,80,.8))":"none",
-              animation: t.earned?`trophyFloat ${2.4+i*.35}s ease-in-out infinite`:"none" }}>
+        {TROPHIES_DEFINITIONS.map((t,i)=>(
+          <text key={t.id} x={665+i*34} y="101" textAnchor="middle" fontSize="15" opacity=".2">
             {t.emoji}
           </text>
         ))}
 
-        {/* Floor line */}
         <rect x="0" y="155" width="900" height="5" fill={dark?"#0A0712":"#1A0E08"} opacity=".9"/>
       </svg>
 
@@ -445,7 +475,7 @@ function RoomHeader({ dark, onToggleDark, user, genre }) {
         <div style={{ flex:1 }}>
           <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(15px,3.2vw,22px)",
             fontWeight:700, color: dark?"#A8C0FF":"#FFD580", letterSpacing:".01em" }}>
-            {greeting}, {user.name} {greetIcon}
+            {greeting}{user.name ? `, ${user.name}` : ""} {greetIcon}
           </div>
           <div style={{ fontFamily:"'Lora',serif", fontSize:"clamp(10px,1.8vw,13px)", fontStyle:"italic",
             color: dark?"rgba(168,192,255,.45)":"rgba(255,213,128,.5)", marginTop:2 }}>
@@ -453,25 +483,72 @@ function RoomHeader({ dark, onToggleDark, user, genre }) {
           </div>
         </div>
 
-        {/* Session badge */}
-        <div style={{
-          background:"rgba(14,6,2,.7)", border:"1px solid rgba(200,144,60,.3)",
-          borderRadius:10, padding:"8px 14px", textAlign:"center", flexShrink:0,
-        }}>
-          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"clamp(8px,1.4vw,10px)",
-            letterSpacing:".15em", textTransform:"uppercase", color:"#C8903C", marginBottom:2 }}>
-            Session
-          </div>
-          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(16px,3vw,22px)",
-            color:"#FF8C42", fontWeight:700, lineHeight:1 }}>
-            {MOCK_USER.minutesThisSession}<span style={{ fontSize:"0.55em", color:"rgba(255,140,66,.6)", marginLeft:3 }}>min</span>
-          </div>
-          {user.isConsistent && (
-            <div style={{ fontSize:10, color:"#FFD700", marginTop:2 }}>🔥 streak</div>
+        {/* Name display + inline editor — always visible, no absolute positioning */}
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0, gap:4 }}>
+          {editingName ? (
+            <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+              <input
+                autoFocus
+                value={nameVal}
+                maxLength={24}
+                onChange={e=>setNameVal(e.target.value)}
+                onKeyDown={e=>{ if(e.key==="Enter") handleNameSave(); if(e.key==="Escape") setEditingName(false); }}
+                style={{
+                  background:"rgba(14,6,2,.95)", border:"1px solid rgba(200,144,60,.6)",
+                  borderRadius:5, color:"#F5DEB3", fontFamily:"'Lora',serif",
+                  fontSize:12, padding:"4px 8px", width:100, outline:"none",
+                }}
+              />
+              <button onClick={handleNameSave} disabled={nameSaving} style={{
+                background:"#C8903C", border:"none", borderRadius:5,
+                color:"#1A0A04", fontFamily:"'Lora',serif", fontSize:11,
+                padding:"4px 8px", cursor:"pointer", fontWeight:600,
+              }}>{nameSaving?"…":"✓"}</button>
+              <button onClick={()=>setEditingName(false)} style={{
+                background:"rgba(255,255,255,.07)", border:"1px solid rgba(200,144,60,.3)",
+                borderRadius:5, color:"rgba(245,222,179,.6)", fontFamily:"'Lora',serif",
+                fontSize:11, padding:"4px 8px", cursor:"pointer",
+              }}>✕</button>
+            </div>
+          ) : (
+            <div
+              onClick={()=>setEditingName(true)}
+              title="Edit name"
+              style={{
+                cursor:"pointer", display:"flex", alignItems:"center", gap:4,
+                fontFamily:"'Lora',serif", fontSize:11, color:"rgba(200,144,60,.75)",
+                borderRadius:4, padding:"3px 8px",
+                border:"1px solid rgba(200,144,60,.25)",
+                background:"rgba(14,6,2,.5)",
+              }}
+            >
+              <span>{user.name || "add name"}</span>
+              <span style={{ fontSize:9, opacity:.6 }}>✏️</span>
+            </div>
           )}
         </div>
 
-        {/* Lantern toggle */}
+        {/* Streak badge — only shows when streak exists */}
+        {user.currentStreak > 0 && (
+          <div style={{
+            background:"rgba(14,6,2,.7)", border:"1px solid rgba(200,144,60,.3)",
+            borderRadius:10, padding:"8px 14px", textAlign:"center", flexShrink:0,
+          }}>
+            <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"clamp(8px,1.4vw,10px)",
+              letterSpacing:".15em", textTransform:"uppercase", color:"#C8903C", marginBottom:2 }}>
+              Streak
+            </div>
+            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(16px,3vw,22px)",
+              color:"#FF8C42", fontWeight:700, lineHeight:1 }}>
+              {user.currentStreak}
+              <span style={{ fontSize:"0.55em", color:"rgba(255,140,66,.6)", marginLeft:3 }}>days</span>
+            </div>
+            {user.currentStreak > 1 && (
+              <div style={{ fontSize:10, color:"#FFD700", marginTop:2 }}>🔥 on fire</div>
+            )}
+          </div>
+        )}
+
         <LanternToggle dark={dark} onToggle={onToggleDark}/>
       </div>
     </div>
@@ -486,16 +563,13 @@ function LanternToggle({ dark, onToggle }) {
     <Tip text={dark ? "Switch to day" : "Switch to night"}>
       <button onClick={onToggle} style={{
         background:"transparent", border:"none", cursor:"pointer", padding:0,
-        display:"flex", flexDirection:"column", alignItems:"center",
-        flexShrink:0,
+        display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0,
         filter: dark ? "drop-shadow(0 0 8px #FFA500)" : "none",
         transition:"filter .4s",
       }}>
-        {/* hanger */}
         <div style={{ width:12, height:7, border:`2px solid ${dark?"#CDA87A":"#6B4F3F"}`,
           borderRadius:"6px 6px 0 0", borderBottom:"none",
           background:dark?"#8B7355":"#3E3227", marginBottom:-1 }}/>
-        {/* cage */}
         <div className="lantern-cage" style={{
           position:"relative", width:28, height:44,
           border:`2px solid ${dark?"#CDA87A":"#5D4A3A"}`,
@@ -504,7 +578,6 @@ function LanternToggle({ dark, onToggle }) {
           display:"flex", alignItems:"center", justifyContent:"center",
           background:"transparent",
         }}>
-          {/* bars */}
           {[...Array(4)].map((_,i)=>(
             <div key={i} style={{
               position:"absolute", width:1, height:"82%",
@@ -514,13 +587,10 @@ function LanternToggle({ dark, onToggle }) {
               boxShadow: dark?"0 0 3px #FFA500":"none",
             }}/>
           ))}
-          {/* top ring */}
           <div style={{ position:"absolute", top:-2, left:"50%", transform:"translateX(-50%)",
             width:20, height:3, background:dark?"#CDA87A":"#5D4A3A", borderRadius:"3px 3px 0 0" }}/>
-          {/* bottom ring */}
           <div style={{ position:"absolute", bottom:-2, left:"50%", transform:"translateX(-50%)",
             width:22, height:4, background:dark?"#CDA87A":"#5D4A3A", borderRadius:"0 0 5px 5px" }}/>
-          {/* flame or empty */}
           {dark ? (
             <div className="lantern-flame" style={{
               width:10, height:16,
@@ -533,7 +603,6 @@ function LanternToggle({ dark, onToggle }) {
             <div style={{ width:7, height:7, background:"#2A3A3A", borderRadius:"50%", opacity:.3 }}/>
           )}
         </div>
-        {/* base */}
         <div style={{ width:18, height:5, background:dark?"#CDA87A":"#5D4A3A",
           borderRadius:"0 0 6px 6px", marginTop:-1 }}/>
         <div style={{ fontFamily:"'Lora',serif", fontSize:9, color:"rgba(200,144,60,.5)",
@@ -548,7 +617,7 @@ function LanternToggle({ dark, onToggle }) {
 /* ─────────────────────────────────────────────────────────────────────────
    STREAK CALENDAR CARD
 ───────────────────────────────────────────────────────────────────────── */
-function StreakCard({ streakDays }) {
+function StreakCard({ streakDays, currentStreak, longestStreak }) {
   const today = new Date();
   const [displayDate, setDisplayDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const year = displayDate.getFullYear(), month = displayDate.getMonth();
@@ -558,7 +627,8 @@ function StreakCard({ streakDays }) {
 
   const streakMap = {};
   streakDays.forEach((v,i)=>{
-    const d = new Date(today); d.setDate(d.getDate()-(streakDays.length-1-i));
+    const d = new Date(today);
+    d.setDate(d.getDate()-(streakDays.length-1-i));
     streakMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] = v;
   });
 
@@ -584,9 +654,19 @@ function StreakCard({ streakDays }) {
         </div>
       </div>
 
+      {/* Stats row */}
+      <div style={{ display:"flex", gap:16, marginBottom:10 }}>
+        <div style={{ fontSize:11, color:"rgba(200,144,60,.7)" }}>
+          🔥 Current: <strong style={{ color:"#FFD580" }}>{currentStreak} days</strong>
+        </div>
+        <div style={{ fontSize:11, color:"rgba(200,144,60,.7)" }}>
+          🏆 Best: <strong style={{ color:"#FFD580" }}>{longestStreak} days</strong>
+        </div>
+      </div>
+
       {/* Progress bar */}
       <div style={{ height:3, borderRadius:2, background:"rgba(255,255,255,.08)", marginBottom:10, overflow:"hidden" }}>
-        <div style={{ height:"100%", width:`${(earned/total)*100}%`,
+        <div style={{ height:"100%", width: total > 0 ? `${(earned/total)*100}%` : "0%",
           background:"linear-gradient(90deg,#C8903C,#FFD580)", borderRadius:2 }}/>
       </div>
 
@@ -629,7 +709,7 @@ function StreakCard({ streakDays }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   TROPHIES CARD
+   TROPHIES CARD  — all locked until backend provides data
 ───────────────────────────────────────────────────────────────────────── */
 function TrophiesCard() {
   return (
@@ -637,21 +717,23 @@ function TrophiesCard() {
       <div className="lf-card__label">Shelf of honours</div>
       <div className="lf-card__title">Trophies</div>
       <div className="trophy-grid">
-        {MOCK_TROPHIES.map((t,i)=>(
+        {TROPHIES_DEFINITIONS.map((t,i)=>(
           <Tip key={t.id} text={t.label}>
             <div className="trophy-item">
               <div className="trophy-item__emoji" style={{
-                filter: t.earned ? "drop-shadow(0 0 6px rgba(255,200,80,.8))" : "grayscale(1) opacity(.22)",
-                cursor: t.earned ? "pointer" : "not-allowed",
-                animation: t.earned ? `trophyFloat ${2.4+i*.35}s ease-in-out infinite` : "none",
+                filter:"grayscale(1) opacity(.22)",
+                cursor:"not-allowed",
               }}>{t.emoji}</div>
-              <div style={{ fontSize:10, color: t.earned?"rgba(255,213,128,.65)":"rgba(200,160,80,.25)",
+              <div style={{ fontSize:10, color:"rgba(200,160,80,.25)",
                 lineHeight:1.3, maxWidth:54, textAlign:"center" }}>
                 {t.label.split(" ").slice(0,3).join(" ")}
               </div>
             </div>
           </Tip>
         ))}
+      </div>
+      <div style={{ marginTop:12, fontSize:11, color:"rgba(200,144,60,.35)", fontStyle:"italic" }}>
+        Complete stories to earn trophies
       </div>
     </div>
   );
@@ -664,7 +746,6 @@ function MoodCard() {
   const lamp = GENRE_LAMP[LATEST_GENRE] || GENRE_LAMP.fantasy;
   return (
     <div className="lf-card" style={{ display:"flex", alignItems:"center", gap:16 }}>
-      {/* Lamp orb */}
       <div className="mood-orb" style={{
         background:`radial-gradient(circle at 40% 35%,${lamp.glow}55,${lamp.color}33)`,
         boxShadow:`0 0 24px ${lamp.glow}88, inset 0 0 12px ${lamp.glow}44`,
@@ -687,7 +768,7 @@ function MoodCard() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   ACTION CARDS  (Laptop / Archive / Dustbin)
+   ACTION CARDS
 ───────────────────────────────────────────────────────────────────────── */
 function ActionCard({ icon, label, title, sub, onClick, accentColor="#C8903C" }) {
   const [hov, setHov] = useState(false);
@@ -696,7 +777,8 @@ function ActionCard({ icon, label, title, sub, onClick, accentColor="#C8903C" })
       onClick={onClick}
       onMouseEnter={()=>setHov(true)}
       onMouseLeave={()=>setHov(false)}
-      style={{ borderColor: hov ? accentColor+"88" : undefined,
+      style={{
+        borderColor: hov ? accentColor+"88" : undefined,
         boxShadow: hov ? `0 0 20px ${accentColor}22` : "none",
         transition:"border-color .25s,box-shadow .25s,transform .2s",
         transform: hov ? "translateY(-3px)" : "none",
@@ -718,7 +800,7 @@ function ActionCard({ icon, label, title, sub, onClick, accentColor="#C8903C" })
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   DELETED STORIES CARD
+   DELETED STORIES CARD — empty until backend provides data
 ───────────────────────────────────────────────────────────────────────── */
 function DeletedCard({ deleted }) {
   return (
@@ -752,20 +834,61 @@ function DeletedCard({ deleted }) {
 /* ─────────────────────────────────────────────────────────────────────────
    NAV BOOKS CARD
 ───────────────────────────────────────────────────────────────────────── */
+const TEAM_PROFILES = [
+  {
+    name: "Harshith",
+    role: "Backend Developer",
+    linkedin: "https://linkedin.com/in/yourprofile",
+    github: "https://github.com/yourusername",
+    instagram: "https://instagram.com/yourusername",
+  },
+  {
+    name: "Nausheen",
+    role: "Frontend Designer",
+    linkedin: "https://linkedin.com/in/teammate1",
+    github: "https://github.com/teammate1",
+    instagram: "https://instagram.com/teammate1",
+  },
+  {
+    name: "Full Stack Developer",
+    role: "Backend Engineer",
+    linkedin: "https://linkedin.com/in/teammate2",
+    github: "https://github.com/teammate2",
+    instagram: "https://instagram.com/teammate2",
+  },
+];
+
 function NavCard({ onNav }) {
+  const [showContact, setShowContact] = useState(false);
+  const cardRef = useRef(null);
+
   const pages = [
-    { title:"Home",    color:"#B03020", spine:"#7A1A10" },
+    { title:"Logout",  color:"#B03020", spine:"#7A1A10" },
     { title:"About",   color:"#2E6B32", spine:"#1A4A1E" },
     { title:"Contact", color:"#1A5FA0", spine:"#0D3D6E" },
-    { title:"GitHub",  color:"#5C3080", spine:"#3A1A5C" },
   ];
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (cardRef.current && !cardRef.current.contains(e.target)) setShowContact(false);
+    };
+    if (showContact) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showContact]);
+
+  const handleNav = (title) => {
+    if (title === "Contact") { setShowContact(true); return; }
+    onNav(title);
+  };
+
   return (
-    <div className="lf-card">
+    <div className="lf-card" style={{ position:"relative" }}>
       <div className="lf-card__label">Bookshelf navigation</div>
       <div className="lf-card__title" style={{ marginBottom:14 }}>Pages</div>
       <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
         {pages.map(p=>(
-          <button key={p.title} onClick={()=>onNav(p.title)} style={{
+          <button key={p.title} onClick={()=>handleNav(p.title)} style={{
             background:`linear-gradient(135deg,${p.spine},${p.color})`,
             border:"none", borderRadius:6, padding:"8px 16px",
             color:"rgba(255,255,255,.85)", fontFamily:"'Lora',serif",
@@ -779,19 +902,173 @@ function NavCard({ onNav }) {
           </button>
         ))}
       </div>
+
+      {/* ── Parchment Contact Card ── */}
+      {showContact && (
+        <div ref={cardRef} style={{
+          position:"fixed", top:"50%", left:"50%",
+          transform:"translate(-50%,-50%)",
+          width:320, zIndex:1200,
+          background:"#F5E8C7",
+          border:"3px solid #8B6020",
+          borderRadius:12,
+          boxShadow:"0 20px 40px rgba(0,0,0,.75), inset 0 0 80px rgba(139,96,32,.15)",
+          overflow:"hidden",
+        }}>
+          {/* Wax seal */}
+          <div style={{
+            position:"absolute", top:-18, left:"50%", transform:"translateX(-50%)",
+            width:52, height:52, background:"#9C2A2A", borderRadius:"50%",
+            border:"4px solid #FFD700", boxShadow:"0 4px 12px rgba(0,0,0,.6)",
+            display:"flex", alignItems:"center", justifyContent:"center", zIndex:10,
+          }}>
+            <span style={{ color:"#FFD700", fontSize:22, fontWeight:"bold" }}>✧</span>
+          </div>
+
+          {/* Header */}
+          <div style={{
+            background:"linear-gradient(#8B6020,#5C3F14)",
+            padding:"28px 20px 14px", textAlign:"center",
+            borderBottom:"2px solid #C8903C",
+          }}>
+            <div style={{ color:"#F5DEB3", fontFamily:"'Cormorant Garamond',serif", fontSize:22, letterSpacing:"1.5px" }}>
+              Our Team
+            </div>
+            <div style={{ color:"#E8D5A3", fontSize:12, marginTop:4 }}>
+              Connect · Collaborate · Create
+            </div>
+          </div>
+
+          {/* Scrollable content */}
+          <div style={{
+            maxHeight:360, overflowY:"auto", padding:"20px 20px 8px",
+            background:"repeating-linear-gradient(#F5E8C7,#F5E8C7 28px,#EDE0B8 28px,#EDE0B8 29px)",
+            fontFamily:"'Lora',serif",
+          }}>
+            {TEAM_PROFILES.map((m, i) => (
+              <div key={i} style={{
+                marginBottom: i === TEAM_PROFILES.length-1 ? 0 : 14,
+                padding:14, background:"rgba(255,255,255,.75)",
+                border:"1px solid #C8903C", borderRadius:8,
+                boxShadow:"inset 0 2px 6px rgba(0,0,0,.1)",
+              }}>
+                <div style={{ fontSize:16, fontWeight:600, color:"#3C2F1E", marginBottom:2 }}>{m.name}</div>
+                <div style={{ color:"#8B6020", fontSize:12, marginBottom:8 }}>{m.role}</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+                  <a href={m.linkedin} target="_blank" rel="noopener noreferrer" style={{ color:"#0A66C2", textDecoration:"none", fontSize:13 }}>→ LinkedIn</a>
+                  <a href={m.github}   target="_blank" rel="noopener noreferrer" style={{ color:"#24292E", textDecoration:"none", fontSize:13 }}>→ GitHub</a>
+                  <a href={m.instagram} target="_blank" rel="noopener noreferrer" style={{ color:"#E1306C", textDecoration:"none", fontSize:13 }}>→ Instagram</a>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            padding:"12px 20px", background:"#EDE0B8",
+            borderTop:"2px solid #8B6020", display:"flex", justifyContent:"center",
+          }}>
+            <button onClick={()=>setShowContact(false)} style={{
+              background:"#8B6020", color:"#F5DEB3", border:"none",
+              padding:"8px 24px", borderRadius:20, cursor:"pointer",
+              fontSize:13, fontFamily:"'Lora',serif",
+              boxShadow:"0 3px 8px rgba(0,0,0,.3)",
+            }}>
+              Close Scroll
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   MAIN — SmallDashboard
+   MAIN
 ───────────────────────────────────────────────────────────────────────── */
 export default function LofiDashboardSmall() {
-  const [dark,  setDark ] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [dark,      setDark     ] = useState(false);
+  const [toast,     setToast    ] = useState(null);
+  const [showAbout, setShowAbout] = useState(false);
+  const [user,      setUser     ] = useState({ name: "", avatar: null, currentStreak: 0, longestStreak: 0 });
+  const [streakDays,setStreakDays] = useState([]);
+  const [deleted,   setDeleted  ] = useState([]);
+
   const show = m => setToast(m);
 
-  // Theme surface overrides for dark mode
+  /* ── Fetch user + streak on mount ── */
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    // User profile
+    api.get("/auth/me")
+      .then(res => setUser(res.data.user))
+      .catch(err => {
+        console.error("Failed to load user:", err);
+        const stored = localStorage.getItem("user");
+        if (stored) setUser(JSON.parse(stored));
+      });
+
+    // Streak data
+    api.get("/auth/streak")
+      .then(res => {
+        setStreakDays(res.data.streakDays);
+        // Merge streak counts into user state
+        setUser(prev => ({
+          ...prev,
+          currentStreak: res.data.currentStreak,
+          longestStreak: res.data.longestStreak,
+        }));
+      })
+      .catch(err => console.error("Failed to load streak:", err));
+
+    // Deleted stories — set empty until you build this endpoint
+    setDeleted([]);
+  }, []);
+
+  /* ── Avatar upload handler ── */
+  const handleAvatarUpload = async (formData) => {
+    try {
+      const res = await api.post("/auth/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setUser(prev => ({ ...prev, avatar: res.data.avatar }));
+      show("🖼️ Avatar updated!");
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+      show("❌ Upload failed, please try again");
+    }
+  };
+
+  /* ── Logout handler ── */
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (err) {
+      // proceed even if server call fails
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("userLoginTimestamp");
+      window.location.href = "/login"; // adjust path if yours differs
+    }
+  };
+
+  /* ── Name update handler ── */
+  const handleNameSave = async (name) => {
+    try {
+      await api.patch("/auth/update-name", { name });
+      setUser(prev => ({ ...prev, name }));
+      show(`✨ Name updated to "${name}"`);
+    } catch (err) {
+      console.error("Name update failed:", err);
+      show("❌ Could not update name");
+      throw err; // re-throw so RoomHeader knows it failed
+    }
+  };
+
+  /* ── Theme overrides ── */
   useEffect(() => {
     const root = document.documentElement;
     if (dark) {
@@ -822,8 +1099,10 @@ export default function LofiDashboardSmall() {
         <RoomHeader
           dark={dark}
           onToggleDark={() => setDark(d => !d)}
-          user={MOCK_USER}
+          user={user}
           genre={LATEST_GENRE}
+          onAvatarUpload={handleAvatarUpload}
+          onNameSave={handleNameSave}
         />
 
         <div className="lf-grid">
@@ -847,7 +1126,11 @@ export default function LofiDashboardSmall() {
 
           {/* Row 2: Streak calendar (wide) */}
           <div className="lf-card--wide">
-            <StreakCard streakDays={MOCK_STREAK}/>
+            <StreakCard
+              streakDays={streakDays}
+              currentStreak={user.currentStreak}
+              longestStreak={user.longestStreak}
+            />
           </div>
 
           {/* Row 3: Trophies + Mood */}
@@ -855,11 +1138,16 @@ export default function LofiDashboardSmall() {
           <MoodCard/>
 
           {/* Row 4: Nav + Deleted */}
-          <NavCard onNav={page => show(`📖 Navigating to ${page}…`)}/>
-          <DeletedCard deleted={MOCK_DELETED}/>
+          <NavCard onNav={page => {
+            if (page === "About") setShowAbout(true);
+            else if (page === "Logout") handleLogout();
+            else show(`📖 Navigating to ${page}…`);
+          }}/>
+          <DeletedCard deleted={deleted}/>
         </div>
 
         {toast && <Toast msg={toast} onClose={() => setToast(null)}/>}
+        {showAbout && <AboutPage onClose={() => setShowAbout(false)} />}
       </div>
     </>
   );
