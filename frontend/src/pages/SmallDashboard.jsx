@@ -767,8 +767,8 @@ function TrophiesCard({ trophies = [] }) {
 /* ─────────────────────────────────────────────────────────────────────────
    MOOD LAMP CARD
 ───────────────────────────────────────────────────────────────────────── */
-function MoodCard() {
-  const lamp = GENRE_LAMP[LATEST_GENRE] || GENRE_LAMP.fantasy;
+function MoodCard({ genre }) {
+  const lamp = GENRE_LAMP[genre?.toLowerCase()] || GENRE_LAMP.fantasy;
   return (
     <div className="lf-card" style={{ display: "flex", alignItems: "center", gap: 16 }}>
       <div className="mood-orb" style={{
@@ -820,40 +820,6 @@ function ActionCard({ icon, label, title, sub, onClick, accentColor = "#C8903C" 
       }}>
         Open <span style={{ fontSize: 14 }}>→</span>
       </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
-   DELETED STORIES CARD — empty until backend provides data
-───────────────────────────────────────────────────────────────────────── */
-function DeletedCard({ deleted }) {
-  return (
-    <div className="lf-card">
-      <div className="lf-card__label">Dustbin</div>
-      <div className="lf-card__title" style={{ marginBottom: 10 }}>Deleted tales</div>
-      {deleted.length === 0 ? (
-        <div className="lf-card__sub">The bin is empty</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {deleted.map(s => (
-            <div key={s.id} style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "8px 12px", borderRadius: 8,
-              background: "rgba(255,255,255,.04)",
-              border: "1px solid rgba(255,60,60,.12)",
-            }}>
-              <span style={{ fontSize: 18 }}>🗑</span>
-              <span style={{
-                fontSize: 12, color: "rgba(245,222,179,.55)", fontStyle: "italic",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
-              }}>
-                {s.title}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -1020,8 +986,8 @@ export default function LofiDashboardSmall() {
   const [showArchive, setShowArchive] = useState(false);
   const [user, setUser] = useState({ name: "", avatar: null, currentStreak: 0, longestStreak: 0 });
   const [streakDays, setStreakDays] = useState([]);
-  const [deleted, setDeleted] = useState([]);
   const [trophies, setTrophies] = useState([]);
+  const [latestGenre, setLatestGenre] = useState("mystery");
 
   const show = m => setToast(m);
   const navigate = useNavigate();
@@ -1052,13 +1018,19 @@ export default function LofiDashboardSmall() {
       })
       .catch(err => console.error("Failed to load streak:", err));
 
-    // Deleted stories — set empty until you build this endpoint
-    setDeleted([]);
-
     // Trophies - fetch earned and locked definitions
     api.get("/trophies")
       .then(res => setTrophies(res.data.trophies || []))
       .catch(err => console.error("Failed to load trophies:", err));
+
+    // Fetch latest story for mood lamp
+    api.get("/story/completed")
+      .then(res => {
+         if (res.data.stories && res.data.stories.length > 0) {
+            setLatestGenre(res.data.stories[0].genre);
+         }
+      })
+      .catch(err => console.error("Failed to load latest story genre:", err));
   }, []);
 
   /* ── Avatar upload handler ── */
@@ -1134,7 +1106,7 @@ export default function LofiDashboardSmall() {
           dark={dark}
           onToggleDark={() => setDark(d => !d)}
           user={user}
-          genre={LATEST_GENRE}
+          genre={latestGenre}
           onAvatarUpload={handleAvatarUpload}
           onNameSave={handleNameSave}
         />
@@ -1169,15 +1141,14 @@ export default function LofiDashboardSmall() {
 
           {/* Row 3: Trophies + Mood */}
           <TrophiesCard trophies={trophies} />
-          <MoodCard />
+          <MoodCard genre={latestGenre} />
 
-          {/* Row 4: Nav + Deleted */}
+          {/* Row 4: Nav */}
           <NavCard onNav={page => {
             if (page === "About") setShowAbout(true);
             else if (page === "Logout") handleLogout();
             else show(`📖 Navigating to ${page}…`);
           }} />
-          <DeletedCard deleted={deleted} />
         </div>
 
         {toast && <Toast msg={toast} onClose={() => setToast(null)} />}
