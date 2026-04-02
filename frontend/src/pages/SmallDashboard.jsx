@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import AboutPage from "../components/AboutPage";
 import api from "../api/axios";
-
+import { useNavigate } from "react-router-dom";
 /* ─────────────────────────────────────────────────────────────────────────
    CONSTANTS  (no mock user/streak/deleted — all come from backend)
 ───────────────────────────────────────────────────────────────────────── */
@@ -850,7 +850,7 @@ const TEAM_PROFILES = [
     instagram: "https://instagram.com/teammate1",
   },
   {
-    name: "Full Stack Developer",
+    name: "Jana Gokul G",
     role: "Backend Engineer",
     linkedin: "https://linkedin.com/in/teammate2",
     github: "https://github.com/teammate2",
@@ -995,7 +995,7 @@ export default function LofiDashboardSmall() {
   const [deleted,   setDeleted  ] = useState([]);
 
   const show = m => setToast(m);
-
+  const navigate=useNavigate();
   /* ── Fetch user + streak on mount ── */
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -1112,7 +1112,7 @@ export default function LofiDashboardSmall() {
             label="Welcome"
             title="Generate a new story"
             sub="Open the writing desk and begin a new tale"
-            onClick={() => show("✨ Starting a new tale!")}
+            onClick={() => navigate('/InteractiveStory')}
             accentColor="#FFD580"
           />
           <ActionCard
