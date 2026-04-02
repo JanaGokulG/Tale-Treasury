@@ -1,5 +1,4 @@
-import Story from "../models/Story.js";
-
+import Story, { CompletedStory } from "../models/Story.js";
 // Save or update the active story session
 export const saveStorySession = async (req, res) => {
   try {
@@ -45,5 +44,24 @@ export const clearStorySession = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: "Failed to clear story session" });
+  }
+};
+export const saveCompletedStory = async (req, res) => {
+  try {
+    const { genre, ageGroup, prompt, storyTitle, chapters, finalText, wordCount } = req.body;
+    const saved = await CompletedStory.create({
+      userId: req.user.id, genre, ageGroup, prompt, storyTitle, chapters, finalText, wordCount,
+    });
+    res.json({ success: true, story: saved });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to save completed story" });
+  }
+};
+export const getCompletedStories = async (req, res) => {
+  try {
+    const stories = await CompletedStory.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    res.json({ stories });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch completed stories" });
   }
 };

@@ -557,7 +557,29 @@ const clearSession = async () => {
     await fetch(`${API_BASE}/story/session`, { method: "DELETE", headers: apiHeaders() });
   } catch (_) {}
 };
+const saveCompletedStoryToDB = async (payload) => {
+  try {
+    // Build numbered chapter objects: { 0: {...}, 1: {...}, 2: {...}, final: {...} }
+    const chapters = {};
+    payload.storySegments.forEach((seg, i) => {
+      chapters[i] = {
+        title: seg.title || "",
+        text: seg.text,
+        chosenChoice: seg.chosenChoice,
+      };
+    });
+    chapters["final"] = {
+      title: "The End",
+      text: payload.finalText,
+    };
 
+    await fetch(`${API_BASE}/story/completed`, {
+      method: "POST",
+      headers: apiHeaders(),
+      body: JSON.stringify({ ...payload, chapters }),
+    });
+  } catch (_) {}
+};
 // ─── PDF Export ───────────────────────────────────────────────────────────────
 const exportToPDF = (storyTitle, storySegments, currentText, genre, ageGroup) => {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -979,10 +1001,19 @@ CHOICE 2: [Specific action, 5–12 words, no question marks]`;
       setCurrentText(parsed.story);
 
       if (willBeFinal) {
-        setChoices([]);
-        setStoryDone(true);
-        await saveSession({ ...sessionPatch, isGenerating: false, currentText: parsed.story, choices: [], storyDone: true });
-      } else {
+  setChoices([]);
+  setStoryDone(true);
+  await saveCompletedStoryToDB({
+    storyTitle,
+    genre,
+    ageGroup,
+    prompt,
+    storySegments: newSegments,
+    finalText: parsed.story,
+    wordCount,
+  });
+  await saveSession({ ...sessionPatch, isGenerating: false, currentText: parsed.story, choices: [], storyDone: true });
+} else {
         const fc = parsed.choices.length === 2 ? parsed.choices : [];
         setChoices(fc);
         autoSave({ ...sessionPatch, isGenerating: false, currentText: parsed.story, choices: fc });

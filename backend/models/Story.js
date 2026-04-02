@@ -22,4 +22,19 @@ const storySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Story", storySchema);
+const Story = mongoose.model("Story", storySchema);
+export default Story;// Add this at the bottom of Story.js
+const completedStorySchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    genre: String,
+    ageGroup: String,
+    prompt: String,
+    storyTitle: String,
+    chapters: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },    finalText: { type: String, default: "" },
+    wordCount: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+
+export const CompletedStory = mongoose.model("CompletedStory", completedStorySchema);
