@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import AboutPage from "../components/AboutPage";
+import StoryArchive from "../components/StoryArchive";
 import api from "../api/axios";
-
+import { useNavigate } from "react-router-dom";
+import { logoutUserWithApi } from "../services/authService";
 /* ─────────────────────────────────────────────────────────────────────────
    CONSTANTS  (no mock user/streak/deleted — all come from backend)
 ───────────────────────────────────────────────────────────────────────── */
+// Trophies dynamically fetched from the backend, but definitions kept for the SVG background
 const TROPHIES_DEFINITIONS = [
   { id:1, emoji:"📖", label:"First Story Read"                    },
   { id:2, emoji:"🌙", label:"Night Owl – 3 stories after midnight"},
@@ -13,15 +16,14 @@ const TROPHIES_DEFINITIONS = [
   { id:5, emoji:"🌟", label:"Archive Keeper"                      },
   { id:6, emoji:"🎭", label:"Genre Explorer"                      },
 ];
-
 const LATEST_GENRE = "mystery";
 
 const GENRE_LAMP = {
-  fantasy:   { glow:"#FFD580", color:"#FFC940", label:"Fantasy"   },
-  mystery:   { glow:"#B388FF", color:"#9C6FFF", label:"Mystery"   },
-  romance:   { glow:"#FF8FAB", color:"#FF6B8A", label:"Romance"   },
-  horror:    { glow:"#FF6B6B", color:"#E53935", label:"Horror"    },
-  adventure: { glow:"#80DEEA", color:"#26C6DA", label:"Adventure" },
+  fantasy: { glow: "#FFD580", color: "#FFC940", label: "Fantasy" },
+  mystery: { glow: "#B388FF", color: "#9C6FFF", label: "Mystery" },
+  romance: { glow: "#FF8FAB", color: "#FF6B8A", label: "Romance" },
+  horror: { glow: "#FF6B6B", color: "#E53935", label: "Horror" },
+  adventure: { glow: "#80DEEA", color: "#26C6DA", label: "Adventure" },
 };
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -198,7 +200,7 @@ function Toast({ msg, onClose }) {
   return (
     <div className="lf-toast">
       <span>{msg}</span>
-      <span style={{ cursor:"pointer", opacity:.5 }} onClick={onClose}>×</span>
+      <span style={{ cursor: "pointer", opacity: .5 }} onClick={onClose}>×</span>
     </div>
   );
 }
@@ -206,17 +208,17 @@ function Toast({ msg, onClose }) {
 function Tip({ children, text }) {
   const [show, setShow] = useState(false);
   return (
-    <div style={{ position:"relative", display:"inline-flex" }}
+    <div style={{ position: "relative", display: "inline-flex" }}
       onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
       {children}
       {show && text && (
         <div style={{
-          position:"absolute", bottom:"calc(100% + 6px)", left:"50%",
-          transform:"translateX(-50%)", pointerEvents:"none",
-          background:"rgba(14,6,2,.96)", color:"#F5DEB3",
-          fontFamily:"'Lora',serif", fontSize:11, whiteSpace:"nowrap",
-          padding:"5px 11px", borderRadius:7, zIndex:100,
-          border:"1px solid rgba(220,160,80,.3)",
+          position: "absolute", bottom: "calc(100% + 6px)", left: "50%",
+          transform: "translateX(-50%)", pointerEvents: "none",
+          background: "rgba(14,6,2,.96)", color: "#F5DEB3",
+          fontFamily: "'Lora',serif", fontSize: 11, whiteSpace: "nowrap",
+          padding: "5px 11px", borderRadius: 7, zIndex: 100,
+          border: "1px solid rgba(220,160,80,.3)",
         }}>{text}</div>
       )}
     </div>
@@ -232,8 +234,8 @@ function RoomHeader({ dark, onToggleDark, user, genre, onAvatarUpload, onNameSav
   const [showSession, setShowSession] = useState(false);
   const [loginTime, setLoginTime] = useState(null);
   const [editingName, setEditingName] = useState(false);
-  const [nameVal, setNameVal]         = useState(user.name || "");
-  const [nameSaving, setNameSaving]   = useState(false);
+  const [nameVal, setNameVal] = useState(user.name || "");
+  const [nameSaving, setNameSaving] = useState(false);
   const fileInputRef = useState(null);
 
   // keep nameVal in sync when user prop updates
@@ -263,8 +265,8 @@ function RoomHeader({ dark, onToggleDark, user, genre, onAvatarUpload, onNameSav
   const sesM = Math.floor((sessionSecs % 3600) / 60);
   const sesS = sessionSecs % 60;
   const sessionLabel = sesH > 0
-    ? `${sesH}h ${String(sesM).padStart(2,"0")}m`
-    : `${String(sesM).padStart(2,"0")}:${String(sesS).padStart(2,"0")}`;
+    ? `${sesH}h ${String(sesM).padStart(2, "0")}m`
+    : `${String(sesM).padStart(2, "0")}:${String(sesS).padStart(2, "0")}`;
 
   const handleClockClick = () => setShowSession(v => !v);
 
@@ -276,7 +278,7 @@ function RoomHeader({ dark, onToggleDark, user, genre, onAvatarUpload, onNameSav
       if (!file) return;
       const formData = new FormData();
       formData.append("avatar", file);
-      try { await onAvatarUpload(formData); } catch {}
+      try { await onAvatarUpload(formData); } catch { }
     };
     inp.click();
   };
@@ -301,58 +303,58 @@ function RoomHeader({ dark, onToggleDark, user, genre, onAvatarUpload, onNameSav
           ? "linear-gradient(90deg,#0C0918,#1828A0 40%,#0C0918)"
           : "linear-gradient(90deg,#C8903C,#FFF8E6 40%,#FFD580 60%,#C8903C)",
         opacity: .7,
-      }}/>
+      }} />
 
-      <svg viewBox="0 0 900 160" style={{ width:"100%", display:"block" }} preserveAspectRatio="xMidYMid meet">
+      <svg viewBox="0 0 900 160" style={{ width: "100%", display: "block" }} preserveAspectRatio="xMidYMid meet">
         <defs>
           <linearGradient id="roomWall" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"  stopColor={dark?"#0C0918":"#FFF8E6"}/>
-            <stop offset="100%" stopColor={dark?"#1A1020":"#E8D8B0"}/>
+            <stop offset="0%" stopColor={dark ? "#0C0918" : "#FFF8E6"} />
+            <stop offset="100%" stopColor={dark ? "#1A1020" : "#E8D8B0"} />
           </linearGradient>
           <radialGradient id="lampGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={lamp.glow} stopOpacity=".45"/>
-            <stop offset="100%" stopColor={lamp.glow} stopOpacity="0"/>
+            <stop offset="0%" stopColor={lamp.glow} stopOpacity=".45" />
+            <stop offset="100%" stopColor={lamp.glow} stopOpacity="0" />
           </radialGradient>
           {dark && (
             <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#8090FF" stopOpacity=".25"/>
-              <stop offset="100%" stopColor="#3050C0" stopOpacity="0"/>
+              <stop offset="0%" stopColor="#8090FF" stopOpacity=".25" />
+              <stop offset="100%" stopColor="#3050C0" stopOpacity="0" />
             </radialGradient>
           )}
         </defs>
 
-        <rect width="900" height="160" fill="url(#roomWall)"/>
+        <rect width="900" height="160" fill="url(#roomWall)" />
 
         {/* Window */}
-        <rect x="30" y="12" width="160" height="130" rx="4" fill={dark?"#1828A0":"#B8E0FF"} opacity={dark?.18:.2}/>
-        <rect x="30" y="12" width="160" height="130" rx="4" fill="none" stroke="#5A3010" strokeWidth="3"/>
-        <line x1="110" y1="12" x2="110" y2="142" stroke="#5A3010" strokeWidth="2.5"/>
-        <line x1="30" y1="77" x2="190" y2="77" stroke="#5A3010" strokeWidth="2.5"/>
-        <rect x="32" y="14" width="77" height="62" rx="2" fill={dark?"rgba(80,100,220,.06)":"rgba(255,250,220,.14)"}/>
+        <rect x="30" y="12" width="160" height="130" rx="4" fill={dark ? "#1828A0" : "#B8E0FF"} opacity={dark ? .18 : .2} />
+        <rect x="30" y="12" width="160" height="130" rx="4" fill="none" stroke="#5A3010" strokeWidth="3" />
+        <line x1="110" y1="12" x2="110" y2="142" stroke="#5A3010" strokeWidth="2.5" />
+        <line x1="30" y1="77" x2="190" y2="77" stroke="#5A3010" strokeWidth="2.5" />
+        <rect x="32" y="14" width="77" height="62" rx="2" fill={dark ? "rgba(80,100,220,.06)" : "rgba(255,250,220,.14)"} />
         {dark ? (
           <>
-            <circle cx="155" cy="45" r="18" fill="#D8E8FF" opacity=".82"/>
-            <circle cx="144" cy="45" r="18" fill="#1828A0" opacity=".9"/>
+            <circle cx="155" cy="45" r="18" fill="#D8E8FF" opacity=".82" />
+            <circle cx="144" cy="45" r="18" fill="#1828A0" opacity=".9" />
           </>
         ) : (
           <circle cx="155" cy="45" r="16" fill="#FFE87A" opacity=".88"
-            style={{ animation:"pulse-glow 4s ease-in-out infinite" }}/>
+            style={{ animation: "pulse-glow 4s ease-in-out infinite" }} />
         )}
-        {dark && [[60,30],[90,55],[140,25],[170,60],[80,20],[120,40]].map(([cx,cy],i)=>(
+        {dark && [[60, 30], [90, 55], [140, 25], [170, 60], [80, 20], [120, 40]].map(([cx, cy], i) => (
           <circle key={i} cx={cx} cy={cy} r=".9" fill="#E8F0FF" opacity=".7"
-            style={{ animation:`pulse-glow ${2+i*.4}s ease-in-out ${i*.3}s infinite` }}/>
+            style={{ animation: `pulse-glow ${2 + i * .4}s ease-in-out ${i * .3}s infinite` }} />
         ))}
 
         {/* Wall clock — click to toggle session duration */}
         <g transform="translate(220,20)" onClick={handleClockClick}
-          style={{ cursor:"pointer" }}>
-          <circle cx="40" cy="40" r="36" fill="#2E1C08" stroke={showSession?"#FF8C42":"#C8903C"} strokeWidth="2"/>
-          <circle cx="40" cy="40" r="31" fill="#200E04" stroke="rgba(200,144,60,.2)" strokeWidth="1"/>
-          {[...Array(12)].map((_,i)=>{
-            const a=(i*30-90)*Math.PI/180;
-            return <line key={i} x1={40+27*Math.cos(a)} y1={40+27*Math.sin(a)}
-              x2={40+(i%3===0?31:30)*Math.cos(a)} y2={40+(i%3===0?31:30)*Math.sin(a)}
-              stroke="#C8903C" strokeWidth={i%3===0?2:1} strokeLinecap="round"/>;
+          style={{ cursor: "pointer" }}>
+          <circle cx="40" cy="40" r="36" fill="#2E1C08" stroke={showSession ? "#FF8C42" : "#C8903C"} strokeWidth="2" />
+          <circle cx="40" cy="40" r="31" fill="#200E04" stroke="rgba(200,144,60,.2)" strokeWidth="1" />
+          {[...Array(12)].map((_, i) => {
+            const a = (i * 30 - 90) * Math.PI / 180;
+            return <line key={i} x1={40 + 27 * Math.cos(a)} y1={40 + 27 * Math.sin(a)}
+              x2={40 + (i % 3 === 0 ? 31 : 30) * Math.cos(a)} y2={40 + (i % 3 === 0 ? 31 : 30) * Math.sin(a)}
+              stroke="#C8903C" strokeWidth={i % 3 === 0 ? 2 : 1} strokeLinecap="round" />;
           })}
           {showSession ? (
             <>
@@ -362,168 +364,172 @@ function RoomHeader({ dark, onToggleDark, user, genre, onAvatarUpload, onNameSav
             </>
           ) : (
             <>
-              <line x1="40" y1="40" x2={hx} y2={hy} stroke="#F5DEB3" strokeWidth="2.5" strokeLinecap="round"/>
-              <line x1="40" y1="40" x2={mx} y2={my} stroke="#F5DEB3" strokeWidth="1.8" strokeLinecap="round"/>
-              <line x1="40" y1="40" x2={sx} y2={sy} stroke="#FF8C42" strokeWidth="1" strokeLinecap="round"/>
-              <circle cx="40" cy="40" r="2.5" fill="#FF8C42"/>
+              <line x1="40" y1="40" x2={hx} y2={hy} stroke="#F5DEB3" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="40" y1="40" x2={mx} y2={my} stroke="#F5DEB3" strokeWidth="1.8" strokeLinecap="round" />
+              <line x1="40" y1="40" x2={sx} y2={sy} stroke="#FF8C42" strokeWidth="1" strokeLinecap="round" />
+              <circle cx="40" cy="40" r="2.5" fill="#FF8C42" />
               <text x="40" y="65" textAnchor="middle" fill="rgba(200,144,60,.55)" fontFamily="serif" fontSize="8">
-                {now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
+                {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </text>
             </>
           )}
         </g>
 
         {/* Hanging plant */}
-        <g style={{ transformOrigin:"310px 0", animation:"sway 4.5s ease-in-out infinite" }}>
-          <line x1="310" y1="0" x2="310" y2="28" stroke="#8B6040" strokeWidth="1.5"/>
-          <ellipse cx="310" cy="30" rx="11" ry="4" fill="#7A4A28"/>
-          {[[-9,44,-26],[-2,52,-7],[10,48,22],[-6,58,-14],[8,60,26]].map(([dx,y,rot],j)=>(
-            <ellipse key={j} cx={310+dx} cy={y} rx={8+j%2} ry={3.5}
-              fill={j%2===0?"#4E7C2A":"#5D8F32"} transform={`rotate(${rot},${310+dx},${y})`} opacity=".88"/>
+        <g style={{ transformOrigin: "310px 0", animation: "sway 4.5s ease-in-out infinite" }}>
+          <line x1="310" y1="0" x2="310" y2="28" stroke="#8B6040" strokeWidth="1.5" />
+          <ellipse cx="310" cy="30" rx="11" ry="4" fill="#7A4A28" />
+          {[[-9, 44, -26], [-2, 52, -7], [10, 48, 22], [-6, 58, -14], [8, 60, 26]].map(([dx, y, rot], j) => (
+            <ellipse key={j} cx={310 + dx} cy={y} rx={8 + j % 2} ry={3.5}
+              fill={j % 2 === 0 ? "#4E7C2A" : "#5D8F32"} transform={`rotate(${rot},${310 + dx},${y})`} opacity=".88" />
           ))}
         </g>
 
-        <ellipse cx="380" cy="100" rx="60" ry="50" fill="url(#lampGlow)"/>
+        <ellipse cx="380" cy="100" rx="60" ry="50" fill="url(#lampGlow)" />
 
         {/* Portrait frame — click to upload avatar */}
-        <g transform="translate(450,18)" onClick={handleAvatarClick} style={{ cursor:"pointer" }}>
-          <rect x="0" y="0" width="72" height="88" rx="3" fill="#7A5030" stroke="#C8903C" strokeWidth="1.5"/>
-          <rect x="4" y="4" width="64" height="80" rx="2" fill={dark?"#2A1808":"#3A2248"}/>
+        <g transform="translate(450,18)" onClick={handleAvatarClick} style={{ cursor: "pointer" }}>
+          <rect x="0" y="0" width="72" height="88" rx="3" fill="#7A5030" stroke="#C8903C" strokeWidth="1.5" />
+          <rect x="4" y="4" width="64" height="80" rx="2" fill={dark ? "#2A1808" : "#3A2248"} />
           {user.avatar ? (
-            <image href={user.avatar} x="4" y="4" width="64" height="68" clipPath="url(#avatarClip)" preserveAspectRatio="xMidYMid slice"/>
+            <image href={user.avatar} x="4" y="4" width="64" height="68" clipPath="url(#avatarClip)" preserveAspectRatio="xMidYMid slice" />
           ) : (
             <>
-              <circle cx="36" cy="28" r="13" fill="rgba(200,150,80,.3)"/>
-              <path d="M10 72c0-14 12-26 26-26s26 12 26 26" fill="rgba(200,150,80,.2)"/>
+              <circle cx="36" cy="28" r="13" fill="rgba(200,150,80,.3)" />
+              <path d="M10 72c0-14 12-26 26-26s26 12 26 26" fill="rgba(200,150,80,.2)" />
               <text x="36" y="58" textAnchor="middle" fill="rgba(200,144,60,.45)" fontFamily="serif" fontSize="8">tap to</text>
               <text x="36" y="67" textAnchor="middle" fill="rgba(200,144,60,.45)" fontFamily="serif" fontSize="8">upload</text>
             </>
           )}
           {/* upload hint overlay */}
           <rect x="4" y="4" width="64" height="68" rx="2" fill="rgba(0,0,0,0)" stroke="none"
-            style={{ transition:"fill .2s" }}
-            onMouseEnter={e=>e.currentTarget.setAttribute("fill","rgba(0,0,0,.3)")}
-            onMouseLeave={e=>e.currentTarget.setAttribute("fill","rgba(0,0,0,0)")}/>
+            style={{ transition: "fill .2s" }}
+            onMouseEnter={e => e.currentTarget.setAttribute("fill", "rgba(0,0,0,.3)")}
+            onMouseLeave={e => e.currentTarget.setAttribute("fill", "rgba(0,0,0,0)")} />
           {/* Name plate */}
-          <rect x="14" y="78" width="44" height="9" rx="2" fill="rgba(14,6,2,.8)" stroke="rgba(220,170,70,.35)" strokeWidth=".8"/>
+          <rect x="14" y="78" width="44" height="9" rx="2" fill="rgba(14,6,2,.8)" stroke="rgba(220,170,70,.35)" strokeWidth=".8" />
           <text x="36" y="85" textAnchor="middle" fill="#F5DEB3" fontFamily="serif" fontSize="7" letterSpacing=".06em">
             {user.name || "…"}
           </text>
         </g>
         <defs>
           <clipPath id="avatarClip">
-            <rect x="4" y="4" width="64" height="68" rx="2"/>
+            <rect x="4" y="4" width="64" height="68" rx="2" />
           </clipPath>
         </defs>
 
         {/* Dreamcatcher */}
-        <g transform="translate(560,0)" style={{ transformOrigin:"0 0", animation:"sway 5.5s ease-in-out .8s infinite" }}>
-          <line x1="20" y1="0" x2="20" y2="12" stroke="#C8A060" strokeWidth="1.2"/>
-          <circle cx="20" cy="26" r="14" fill="none" stroke="#E8B860" strokeWidth="1.2"/>
-          {[0,60,120,180,240,300].map((a,i)=>(
+        <g transform="translate(560,0)" style={{ transformOrigin: "0 0", animation: "sway 5.5s ease-in-out .8s infinite" }}>
+          <line x1="20" y1="0" x2="20" y2="12" stroke="#C8A060" strokeWidth="1.2" />
+          <circle cx="20" cy="26" r="14" fill="none" stroke="#E8B860" strokeWidth="1.2" />
+          {[0, 60, 120, 180, 240, 300].map((a, i) => (
             <line key={i} x1="20" y1="26"
-              x2={20+13*Math.cos(a*Math.PI/180)} y2={26+13*Math.sin(a*Math.PI/180)}
-              stroke="#E8B860" strokeWidth=".6" opacity=".5"/>
+              x2={20 + 13 * Math.cos(a * Math.PI / 180)} y2={26 + 13 * Math.sin(a * Math.PI / 180)}
+              stroke="#E8B860" strokeWidth=".6" opacity=".5" />
           ))}
-          <circle cx="20" cy="26" r="4" fill="none" stroke="#E8B860" strokeWidth=".8" opacity=".5"/>
-          {[-6,0,6].map((dx,i)=>(
+          <circle cx="20" cy="26" r="4" fill="none" stroke="#E8B860" strokeWidth=".8" opacity=".5" />
+          {[-6, 0, 6].map((dx, i) => (
             <g key={i}>
-              <line x1={20+dx} y1="40" x2={20+dx} y2={56+i*3} stroke="#C8A060" strokeWidth=".9"/>
-              <ellipse cx={20+dx} cy={49+i*2} rx="3" ry="6" fill="#D4A060" opacity=".65"
-                transform={`rotate(${(i-1)*12},${20+dx},${49+i*2})`}/>
+              <line x1={20 + dx} y1="40" x2={20 + dx} y2={56 + i * 3} stroke="#C8A060" strokeWidth=".9" />
+              <ellipse cx={20 + dx} cy={49 + i * 2} rx="3" ry="6" fill="#D4A060" opacity=".65"
+                transform={`rotate(${(i - 1) * 12},${20 + dx},${49 + i * 2})`} />
             </g>
           ))}
         </g>
 
         {/* Bookshelf */}
-        <rect x="650" y="40" width="230" height="8" rx="2" fill="#5C3A1C" stroke="#7A5028" strokeWidth="1"/>
-        <rect x="650" y="48" width="230" height="3" fill="rgba(0,0,0,.22)"/>
+        <rect x="650" y="40" width="230" height="8" rx="2" fill="#5C3A1C" stroke="#7A5028" strokeWidth="1" />
+        <rect x="650" y="48" width="230" height="3" fill="rgba(0,0,0,.22)" />
         {[
-          {x:658,h:36,c:"#B03020",s:"#7A1A10",w:14},
-          {x:673,h:42,c:"#2E6B32",s:"#1A4A1E",w:11},
-          {x:685,h:38,c:"#1A5FA0",s:"#0D3D6E",w:15},
-          {x:701,h:34,c:"#5C3080",s:"#3A1A5C",w:12},
-          {x:714,h:40,c:"#C8903C",s:"#8B6020",w:10},
-          {x:725,h:36,c:"#8B2820",s:"#5A1010",w:13},
-          {x:739,h:44,c:"#2E7D32",s:"#1B5020",w:11},
-          {x:751,h:38,c:"#C07830",s:"#8B5020",w:14},
-          {x:766,h:33,c:"#4A3080",s:"#2A1A60",w:12},
-          {x:779,h:41,c:"#1565C0",s:"#0D3D80",w:10},
-          {x:790,h:37,c:"#C84030",s:"#8B2A1A",w:13},
-          {x:804,h:35,c:"#3A7A3A",s:"#224A22",w:11},
-          {x:816,h:42,c:"#7A5030",s:"#5A3018",w:9,tilt:14},
-          {x:824,h:38,c:"#3A5A38",s:"#253D25",w:7,tilt:-8},
-        ].map((b,i)=>(
-          <rect key={i} x={b.x} y={40-b.h} width={b.w} height={b.h} rx="1"
+          { x: 658, h: 36, c: "#B03020", s: "#7A1A10", w: 14 },
+          { x: 673, h: 42, c: "#2E6B32", s: "#1A4A1E", w: 11 },
+          { x: 685, h: 38, c: "#1A5FA0", s: "#0D3D6E", w: 15 },
+          { x: 701, h: 34, c: "#5C3080", s: "#3A1A5C", w: 12 },
+          { x: 714, h: 40, c: "#C8903C", s: "#8B6020", w: 10 },
+          { x: 725, h: 36, c: "#8B2820", s: "#5A1010", w: 13 },
+          { x: 739, h: 44, c: "#2E7D32", s: "#1B5020", w: 11 },
+          { x: 751, h: 38, c: "#C07830", s: "#8B5020", w: 14 },
+          { x: 766, h: 33, c: "#4A3080", s: "#2A1A60", w: 12 },
+          { x: 779, h: 41, c: "#1565C0", s: "#0D3D80", w: 10 },
+          { x: 790, h: 37, c: "#C84030", s: "#8B2A1A", w: 13 },
+          { x: 804, h: 35, c: "#3A7A3A", s: "#224A22", w: 11 },
+          { x: 816, h: 42, c: "#7A5030", s: "#5A3018", w: 9, tilt: 14 },
+          { x: 824, h: 38, c: "#3A5A38", s: "#253D25", w: 7, tilt: -8 },
+        ].map((b, i) => (
+          <rect key={i} x={b.x} y={40 - b.h} width={b.w} height={b.h} rx="1"
             fill={b.c} stroke={b.s} strokeWidth=".8"
-            transform={b.tilt?`rotate(${b.tilt},${b.x+b.w/2},${40})`:""}/>
+            transform={b.tilt ? `rotate(${b.tilt},${b.x + b.w / 2},${40})` : ""} />
         ))}
 
         {/* Trophy shelf — all unearned until backend provides data */}
-        <rect x="650" y="104" width="230" height="7" rx="2" fill="#5C3A1C" stroke="#7A5028" strokeWidth="1"/>
-        {TROPHIES_DEFINITIONS.map((t,i)=>(
-          <text key={t.id} x={665+i*34} y="101" textAnchor="middle" fontSize="15" opacity=".2">
+        <rect x="650" y="104" width="230" height="7" rx="2" fill="#5C3A1C" stroke="#7A5028" strokeWidth="1" />
+        {TROPHIES_DEFINITIONS.map((t, i) => (
+          <text key={t.id} x={665 + i * 34} y="101" textAnchor="middle" fontSize="15" opacity=".2">
             {t.emoji}
           </text>
         ))}
 
-        <rect x="0" y="155" width="900" height="5" fill={dark?"#0A0712":"#1A0E08"} opacity=".9"/>
+        <rect x="0" y="155" width="900" height="5" fill={dark ? "#0A0712" : "#1A0E08"} opacity=".9" />
       </svg>
 
       {/* Header text row */}
       <div className="lf-header-inner">
-        <div style={{ flex:1 }}>
-          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(15px,3.2vw,22px)",
-            fontWeight:700, color: dark?"#A8C0FF":"#FFD580", letterSpacing:".01em" }}>
+        <div style={{ flex: 1 }}>
+          <div style={{
+            fontFamily: "'Playfair Display',serif", fontSize: "clamp(15px,3.2vw,22px)",
+            fontWeight: 700, color: dark ? "#A8C0FF" : "#FFD580", letterSpacing: ".01em"
+          }}>
             {greeting}{user.name ? `, ${user.name}` : ""} {greetIcon}
           </div>
-          <div style={{ fontFamily:"'Lora',serif", fontSize:"clamp(10px,1.8vw,13px)", fontStyle:"italic",
-            color: dark?"rgba(168,192,255,.45)":"rgba(255,213,128,.5)", marginTop:2 }}>
+          <div style={{
+            fontFamily: "'Lora',serif", fontSize: "clamp(10px,1.8vw,13px)", fontStyle: "italic",
+            color: dark ? "rgba(168,192,255,.45)" : "rgba(255,213,128,.5)", marginTop: 2
+          }}>
             Your cozy corner awaits
           </div>
         </div>
 
         {/* Name display + inline editor — always visible, no absolute positioning */}
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0, gap:4 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, gap: 4 }}>
           {editingName ? (
-            <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               <input
                 autoFocus
                 value={nameVal}
                 maxLength={24}
-                onChange={e=>setNameVal(e.target.value)}
-                onKeyDown={e=>{ if(e.key==="Enter") handleNameSave(); if(e.key==="Escape") setEditingName(false); }}
+                onChange={e => setNameVal(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleNameSave(); if (e.key === "Escape") setEditingName(false); }}
                 style={{
-                  background:"rgba(14,6,2,.95)", border:"1px solid rgba(200,144,60,.6)",
-                  borderRadius:5, color:"#F5DEB3", fontFamily:"'Lora',serif",
-                  fontSize:12, padding:"4px 8px", width:100, outline:"none",
+                  background: "rgba(14,6,2,.95)", border: "1px solid rgba(200,144,60,.6)",
+                  borderRadius: 5, color: "#F5DEB3", fontFamily: "'Lora',serif",
+                  fontSize: 12, padding: "4px 8px", width: 100, outline: "none",
                 }}
               />
               <button onClick={handleNameSave} disabled={nameSaving} style={{
-                background:"#C8903C", border:"none", borderRadius:5,
-                color:"#1A0A04", fontFamily:"'Lora',serif", fontSize:11,
-                padding:"4px 8px", cursor:"pointer", fontWeight:600,
-              }}>{nameSaving?"…":"✓"}</button>
-              <button onClick={()=>setEditingName(false)} style={{
-                background:"rgba(255,255,255,.07)", border:"1px solid rgba(200,144,60,.3)",
-                borderRadius:5, color:"rgba(245,222,179,.6)", fontFamily:"'Lora',serif",
-                fontSize:11, padding:"4px 8px", cursor:"pointer",
+                background: "#C8903C", border: "none", borderRadius: 5,
+                color: "#1A0A04", fontFamily: "'Lora',serif", fontSize: 11,
+                padding: "4px 8px", cursor: "pointer", fontWeight: 600,
+              }}>{nameSaving ? "…" : "✓"}</button>
+              <button onClick={() => setEditingName(false)} style={{
+                background: "rgba(255,255,255,.07)", border: "1px solid rgba(200,144,60,.3)",
+                borderRadius: 5, color: "rgba(245,222,179,.6)", fontFamily: "'Lora',serif",
+                fontSize: 11, padding: "4px 8px", cursor: "pointer",
               }}>✕</button>
             </div>
           ) : (
             <div
-              onClick={()=>setEditingName(true)}
+              onClick={() => setEditingName(true)}
               title="Edit name"
               style={{
-                cursor:"pointer", display:"flex", alignItems:"center", gap:4,
-                fontFamily:"'Lora',serif", fontSize:11, color:"rgba(200,144,60,.75)",
-                borderRadius:4, padding:"3px 8px",
-                border:"1px solid rgba(200,144,60,.25)",
-                background:"rgba(14,6,2,.5)",
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+                fontFamily: "'Lora',serif", fontSize: 11, color: "rgba(200,144,60,.75)",
+                borderRadius: 4, padding: "3px 8px",
+                border: "1px solid rgba(200,144,60,.25)",
+                background: "rgba(14,6,2,.5)",
               }}
             >
               <span>{user.name || "add name"}</span>
-              <span style={{ fontSize:9, opacity:.6 }}>✏️</span>
+              <span style={{ fontSize: 9, opacity: .6 }}>✏️</span>
             </div>
           )}
         </div>
@@ -531,25 +537,29 @@ function RoomHeader({ dark, onToggleDark, user, genre, onAvatarUpload, onNameSav
         {/* Streak badge — only shows when streak exists */}
         {user.currentStreak > 0 && (
           <div style={{
-            background:"rgba(14,6,2,.7)", border:"1px solid rgba(200,144,60,.3)",
-            borderRadius:10, padding:"8px 14px", textAlign:"center", flexShrink:0,
+            background: "rgba(14,6,2,.7)", border: "1px solid rgba(200,144,60,.3)",
+            borderRadius: 10, padding: "8px 14px", textAlign: "center", flexShrink: 0,
           }}>
-            <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"clamp(8px,1.4vw,10px)",
-              letterSpacing:".15em", textTransform:"uppercase", color:"#C8903C", marginBottom:2 }}>
+            <div style={{
+              fontFamily: "'Cormorant Garamond',serif", fontSize: "clamp(8px,1.4vw,10px)",
+              letterSpacing: ".15em", textTransform: "uppercase", color: "#C8903C", marginBottom: 2
+            }}>
               Streak
             </div>
-            <div style={{ fontFamily:"'Playfair Display',serif", fontSize:"clamp(16px,3vw,22px)",
-              color:"#FF8C42", fontWeight:700, lineHeight:1 }}>
+            <div style={{
+              fontFamily: "'Playfair Display',serif", fontSize: "clamp(16px,3vw,22px)",
+              color: "#FF8C42", fontWeight: 700, lineHeight: 1
+            }}>
               {user.currentStreak}
-              <span style={{ fontSize:"0.55em", color:"rgba(255,140,66,.6)", marginLeft:3 }}>days</span>
+              <span style={{ fontSize: "0.55em", color: "rgba(255,140,66,.6)", marginLeft: 3 }}>days</span>
             </div>
             {user.currentStreak > 1 && (
-              <div style={{ fontSize:10, color:"#FFD700", marginTop:2 }}>🔥 on fire</div>
+              <div style={{ fontSize: 10, color: "#FFD700", marginTop: 2 }}>🔥 on fire</div>
             )}
           </div>
         )}
 
-        <LanternToggle dark={dark} onToggle={onToggleDark}/>
+        <LanternToggle dark={dark} onToggle={onToggleDark} />
       </div>
     </div>
   );
@@ -562,52 +572,62 @@ function LanternToggle({ dark, onToggle }) {
   return (
     <Tip text={dark ? "Switch to day" : "Switch to night"}>
       <button onClick={onToggle} style={{
-        background:"transparent", border:"none", cursor:"pointer", padding:0,
-        display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0,
+        background: "transparent", border: "none", cursor: "pointer", padding: 0,
+        display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0,
         filter: dark ? "drop-shadow(0 0 8px #FFA500)" : "none",
-        transition:"filter .4s",
+        transition: "filter .4s",
       }}>
-        <div style={{ width:12, height:7, border:`2px solid ${dark?"#CDA87A":"#6B4F3F"}`,
-          borderRadius:"6px 6px 0 0", borderBottom:"none",
-          background:dark?"#8B7355":"#3E3227", marginBottom:-1 }}/>
+        <div style={{
+          width: 12, height: 7, border: `2px solid ${dark ? "#CDA87A" : "#6B4F3F"}`,
+          borderRadius: "6px 6px 0 0", borderBottom: "none",
+          background: dark ? "#8B7355" : "#3E3227", marginBottom: -1
+        }} />
         <div className="lantern-cage" style={{
-          position:"relative", width:28, height:44,
-          border:`2px solid ${dark?"#CDA87A":"#5D4A3A"}`,
-          borderRadius:"14px 14px 13px 13px",
+          position: "relative", width: 28, height: 44,
+          border: `2px solid ${dark ? "#CDA87A" : "#5D4A3A"}`,
+          borderRadius: "14px 14px 13px 13px",
           boxShadow: dark ? "0 0 18px rgba(255,140,0,.55)" : "0 2px 6px rgba(0,0,0,.3)",
-          display:"flex", alignItems:"center", justifyContent:"center",
-          background:"transparent",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "transparent",
         }}>
-          {[...Array(4)].map((_,i)=>(
+          {[...Array(4)].map((_, i) => (
             <div key={i} style={{
-              position:"absolute", width:1, height:"82%",
-              background:dark?"#FFD700":"#8B7355",
-              left:`${18+i*22}%`, top:"9%",
-              opacity:dark?.9:.65,
-              boxShadow: dark?"0 0 3px #FFA500":"none",
-            }}/>
+              position: "absolute", width: 1, height: "82%",
+              background: dark ? "#FFD700" : "#8B7355",
+              left: `${18 + i * 22}%`, top: "9%",
+              opacity: dark ? .9 : .65,
+              boxShadow: dark ? "0 0 3px #FFA500" : "none",
+            }} />
           ))}
-          <div style={{ position:"absolute", top:-2, left:"50%", transform:"translateX(-50%)",
-            width:20, height:3, background:dark?"#CDA87A":"#5D4A3A", borderRadius:"3px 3px 0 0" }}/>
-          <div style={{ position:"absolute", bottom:-2, left:"50%", transform:"translateX(-50%)",
-            width:22, height:4, background:dark?"#CDA87A":"#5D4A3A", borderRadius:"0 0 5px 5px" }}/>
+          <div style={{
+            position: "absolute", top: -2, left: "50%", transform: "translateX(-50%)",
+            width: 20, height: 3, background: dark ? "#CDA87A" : "#5D4A3A", borderRadius: "3px 3px 0 0"
+          }} />
+          <div style={{
+            position: "absolute", bottom: -2, left: "50%", transform: "translateX(-50%)",
+            width: 22, height: 4, background: dark ? "#CDA87A" : "#5D4A3A", borderRadius: "0 0 5px 5px"
+          }} />
           {dark ? (
             <div className="lantern-flame" style={{
-              width:10, height:16,
-              background:"radial-gradient(circle at 50% 30%,#FFE55C 0%,#FF8C00 80%)",
-              borderRadius:"50% 50% 30% 30%",
-              boxShadow:"0 0 12px #FF8C00,0 0 22px #FF4500",
-              zIndex:2,
-            }}/>
+              width: 10, height: 16,
+              background: "radial-gradient(circle at 50% 30%,#FFE55C 0%,#FF8C00 80%)",
+              borderRadius: "50% 50% 30% 30%",
+              boxShadow: "0 0 12px #FF8C00,0 0 22px #FF4500",
+              zIndex: 2,
+            }} />
           ) : (
-            <div style={{ width:7, height:7, background:"#2A3A3A", borderRadius:"50%", opacity:.3 }}/>
+            <div style={{ width: 7, height: 7, background: "#2A3A3A", borderRadius: "50%", opacity: .3 }} />
           )}
         </div>
-        <div style={{ width:18, height:5, background:dark?"#CDA87A":"#5D4A3A",
-          borderRadius:"0 0 6px 6px", marginTop:-1 }}/>
-        <div style={{ fontFamily:"'Lora',serif", fontSize:9, color:"rgba(200,144,60,.5)",
-          marginTop:3, letterSpacing:".05em" }}>
-          {dark?"day":"night"}
+        <div style={{
+          width: 18, height: 5, background: dark ? "#CDA87A" : "#5D4A3A",
+          borderRadius: "0 0 6px 6px", marginTop: -1
+        }} />
+        <div style={{
+          fontFamily: "'Lora',serif", fontSize: 9, color: "rgba(200,144,60,.5)",
+          marginTop: 3, letterSpacing: ".05em"
+        }}>
+          {dark ? "day" : "night"}
         </div>
       </button>
     </Tip>
@@ -621,87 +641,89 @@ function StreakCard({ streakDays, currentStreak, longestStreak }) {
   const today = new Date();
   const [displayDate, setDisplayDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const year = displayDate.getFullYear(), month = displayDate.getMonth();
-  const monthName = displayDate.toLocaleString("default",{month:"long"});
+  const monthName = displayDate.toLocaleString("default", { month: "long" });
   const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const streakMap = {};
-  streakDays.forEach((v,i)=>{
+  streakDays.forEach((v, i) => {
     const d = new Date(today);
-    d.setDate(d.getDate()-(streakDays.length-1-i));
+    d.setDate(d.getDate() - (streakDays.length - 1 - i));
     streakMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] = v;
   });
 
   const cells = [];
-  for(let i=0;i<firstDay;i++) cells.push(null);
-  for(let d=1;d<=daysInMonth;d++) cells.push(d);
-  const isToday = d => d===today.getDate()&&month===today.getMonth()&&year===today.getFullYear();
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const isToday = d => d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
   const getS = d => streakMap[`${year}-${month}-${d}`];
 
   const earned = streakDays.filter(Boolean).length;
-  const total  = streakDays.length;
+  const total = streakDays.length;
 
   return (
     <div className="lf-card">
       <div className="lf-card__label">Reading streak</div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
         <div className="lf-card__title">{monthName} {year}</div>
-        <div style={{ display:"flex", gap:6 }}>
-          <button onClick={()=>setDisplayDate(new Date(year,month-1,1))}
-            style={{ background:"none",border:"none",color:"rgba(200,144,60,.7)",cursor:"pointer",fontSize:16,lineHeight:1 }}>‹</button>
-          <button onClick={()=>setDisplayDate(new Date(year,month+1,1))}
-            style={{ background:"none",border:"none",color:"rgba(200,144,60,.7)",cursor:"pointer",fontSize:16,lineHeight:1 }}>›</button>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={() => setDisplayDate(new Date(year, month - 1, 1))}
+            style={{ background: "none", border: "none", color: "rgba(200,144,60,.7)", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>‹</button>
+          <button onClick={() => setDisplayDate(new Date(year, month + 1, 1))}
+            style={{ background: "none", border: "none", color: "rgba(200,144,60,.7)", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>›</button>
         </div>
       </div>
 
       {/* Stats row */}
-      <div style={{ display:"flex", gap:16, marginBottom:10 }}>
-        <div style={{ fontSize:11, color:"rgba(200,144,60,.7)" }}>
-          🔥 Current: <strong style={{ color:"#FFD580" }}>{currentStreak} days</strong>
+      <div style={{ display: "flex", gap: 16, marginBottom: 10 }}>
+        <div style={{ fontSize: 11, color: "rgba(200,144,60,.7)" }}>
+          🔥 Current: <strong style={{ color: "#FFD580" }}>{currentStreak} days</strong>
         </div>
-        <div style={{ fontSize:11, color:"rgba(200,144,60,.7)" }}>
-          🏆 Best: <strong style={{ color:"#FFD580" }}>{longestStreak} days</strong>
+        <div style={{ fontSize: 11, color: "rgba(200,144,60,.7)" }}>
+          🏆 Best: <strong style={{ color: "#FFD580" }}>{longestStreak} days</strong>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div style={{ height:3, borderRadius:2, background:"rgba(255,255,255,.08)", marginBottom:10, overflow:"hidden" }}>
-        <div style={{ height:"100%", width: total > 0 ? `${(earned/total)*100}%` : "0%",
-          background:"linear-gradient(90deg,#C8903C,#FFD580)", borderRadius:2 }}/>
+      <div style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,.08)", marginBottom: 10, overflow: "hidden" }}>
+        <div style={{
+          height: "100%", width: total > 0 ? `${(earned / total) * 100}%` : "0%",
+          background: "linear-gradient(90deg,#C8903C,#FFD580)", borderRadius: 2
+        }} />
       </div>
 
       {/* Day labels */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", marginBottom:4 }}>
-        {["S","M","T","W","T","F","S"].map((d,i)=>(
-          <div key={i} style={{ textAlign:"center", fontSize:9, color:"rgba(200,150,80,.5)", fontWeight:600 }}>{d}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", marginBottom: 4 }}>
+        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+          <div key={i} style={{ textAlign: "center", fontSize: 9, color: "rgba(200,150,80,.5)", fontWeight: 600 }}>{d}</div>
         ))}
       </div>
 
       {/* Day cells */}
       <div className="cal-grid">
-        {cells.map((d,i)=>{
-          if(!d) return <div key={i}/>;
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} />;
           const logged = getS(d), tod = isToday(d);
           return (
             <div key={i} className="cal-day" style={{
               background: tod ? "#C8903C"
-                : logged===true  ? "rgba(255,160,50,.55)"
-                : logged===false ? "rgba(255,60,60,.15)"
-                : "rgba(255,255,255,.05)",
+                : logged === true ? "rgba(255,160,50,.55)"
+                  : logged === false ? "rgba(255,60,60,.15)"
+                    : "rgba(255,255,255,.05)",
               border: tod ? "1px solid #FFD700" : "1px solid transparent",
               color: tod ? "#1A0A04"
-                : logged===true  ? "#FFD700"
-                : logged===false ? "rgba(255,100,100,.6)"
-                : "rgba(200,160,80,.35)",
+                : logged === true ? "#FFD700"
+                  : logged === false ? "rgba(255,100,100,.6)"
+                    : "rgba(200,160,80,.35)",
               fontWeight: tod ? 700 : 400,
             }}>
-              {logged===true && !tod ? "✓" : logged===false ? "×" : d}
+              {logged === true && !tod ? "✓" : logged === false ? "×" : d}
             </div>
           );
         })}
       </div>
 
-      <div style={{ marginTop:10, fontSize:11, color:"rgba(200,144,60,.55)", fontStyle:"italic" }}>
+      <div style={{ marginTop: 10, fontSize: 11, color: "rgba(200,144,60,.55)", fontStyle: "italic" }}>
         {earned} of {total} days logged this period
       </div>
     </div>
@@ -711,28 +733,32 @@ function StreakCard({ streakDays, currentStreak, longestStreak }) {
 /* ─────────────────────────────────────────────────────────────────────────
    TROPHIES CARD  — all locked until backend provides data
 ───────────────────────────────────────────────────────────────────────── */
-function TrophiesCard() {
+function TrophiesCard({ trophies = [] }) {
   return (
     <div className="lf-card">
       <div className="lf-card__label">Shelf of honours</div>
       <div className="lf-card__title">Trophies</div>
       <div className="trophy-grid">
-        {TROPHIES_DEFINITIONS.map((t,i)=>(
+        {trophies.map((t, i) => (
           <Tip key={t.id} text={t.label}>
             <div className="trophy-item">
               <div className="trophy-item__emoji" style={{
-                filter:"grayscale(1) opacity(.22)",
-                cursor:"not-allowed",
+                filter: t.earned ? "none" : "grayscale(1) opacity(.22)",
+                cursor: t.earned ? "pointer" : "not-allowed",
+                animation: t.earned ? "trophyFloat 4s ease-in-out infinite" : "none",
+                animationDelay: t.earned ? `${i * 0.2}s` : "0s",
               }}>{t.emoji}</div>
-              <div style={{ fontSize:10, color:"rgba(200,160,80,.25)",
-                lineHeight:1.3, maxWidth:54, textAlign:"center" }}>
-                {t.label.split(" ").slice(0,3).join(" ")}
+              <div style={{
+                fontSize: 10, color: t.earned ? "#FFD700" : "rgba(200,160,80,.25)",
+                lineHeight: 1.3, maxWidth: 54, textAlign: "center"
+              }}>
+                {t.label.split(" ").slice(0, 3).join(" ")}
               </div>
             </div>
           </Tip>
         ))}
       </div>
-      <div style={{ marginTop:12, fontSize:11, color:"rgba(200,144,60,.35)", fontStyle:"italic" }}>
+      <div style={{ marginTop: 12, fontSize: 11, color: "rgba(200,144,60,.35)", fontStyle: "italic" }}>
         Complete stories to earn trophies
       </div>
     </div>
@@ -742,20 +768,20 @@ function TrophiesCard() {
 /* ─────────────────────────────────────────────────────────────────────────
    MOOD LAMP CARD
 ───────────────────────────────────────────────────────────────────────── */
-function MoodCard() {
-  const lamp = GENRE_LAMP[LATEST_GENRE] || GENRE_LAMP.fantasy;
+function MoodCard({ genre }) {
+  const lamp = GENRE_LAMP[genre?.toLowerCase()] || GENRE_LAMP.fantasy;
   return (
-    <div className="lf-card" style={{ display:"flex", alignItems:"center", gap:16 }}>
+    <div className="lf-card" style={{ display: "flex", alignItems: "center", gap: 16 }}>
       <div className="mood-orb" style={{
-        background:`radial-gradient(circle at 40% 35%,${lamp.glow}55,${lamp.color}33)`,
-        boxShadow:`0 0 24px ${lamp.glow}88, inset 0 0 12px ${lamp.glow}44`,
-        border:`1px solid ${lamp.color}66`,
+        background: `radial-gradient(circle at 40% 35%,${lamp.glow}55,${lamp.color}33)`,
+        boxShadow: `0 0 24px ${lamp.glow}88, inset 0 0 12px ${lamp.glow}44`,
+        border: `1px solid ${lamp.color}66`,
       }}>
         <svg viewBox="0 0 52 80" width="28" height="44">
-          <rect x="23" y="38" width="6" height="30" rx="3" fill="#5A3520"/>
-          <line x1="26" y1="38" x2="15" y2="18" stroke="#5A3520" strokeWidth="3.5" strokeLinecap="round"/>
-          <path d="M3 18 L26 10 L26 26 Z" fill={lamp.color}/>
-          <circle cx="14" cy="18" r="5" fill={lamp.glow} opacity=".95"/>
+          <rect x="23" y="38" width="6" height="30" rx="3" fill="#5A3520" />
+          <line x1="26" y1="38" x2="15" y2="18" stroke="#5A3520" strokeWidth="3.5" strokeLinecap="round" />
+          <path d="M3 18 L26 10 L26 26 Z" fill={lamp.color} />
+          <circle cx="14" cy="18" r="5" fill={lamp.glow} opacity=".95" />
         </svg>
       </div>
       <div>
@@ -770,63 +796,31 @@ function MoodCard() {
 /* ─────────────────────────────────────────────────────────────────────────
    ACTION CARDS
 ───────────────────────────────────────────────────────────────────────── */
-function ActionCard({ icon, label, title, sub, onClick, accentColor="#C8903C" }) {
+function ActionCard({ icon, label, title, sub, onClick, accentColor = "#C8903C" }) {
   const [hov, setHov] = useState(false);
   return (
     <div className="lf-card lf-card--action"
       onClick={onClick}
-      onMouseEnter={()=>setHov(true)}
-      onMouseLeave={()=>setHov(false)}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
       style={{
-        borderColor: hov ? accentColor+"88" : undefined,
+        borderColor: hov ? accentColor + "88" : undefined,
         boxShadow: hov ? `0 0 20px ${accentColor}22` : "none",
-        transition:"border-color .25s,box-shadow .25s,transform .2s",
+        transition: "border-color .25s,box-shadow .25s,transform .2s",
         transform: hov ? "translateY(-3px)" : "none",
       }}>
-      <div style={{ fontSize:32, marginBottom:10 }}>{icon}</div>
+      <div style={{ fontSize: 32, marginBottom: 10 }}>{icon}</div>
       <div className="lf-card__label">{label}</div>
       <div className="lf-card__title">{title}</div>
       <div className="lf-card__sub">{sub}</div>
       <div style={{
-        marginTop:14, display:"inline-flex", alignItems:"center", gap:6,
-        fontFamily:"'Cormorant Garamond',serif", fontSize:12,
-        letterSpacing:".12em", textTransform:"uppercase",
-        color: accentColor, opacity: hov ? 1 : .55, transition:"opacity .2s",
+        marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6,
+        fontFamily: "'Cormorant Garamond',serif", fontSize: 12,
+        letterSpacing: ".12em", textTransform: "uppercase",
+        color: accentColor, opacity: hov ? 1 : .55, transition: "opacity .2s",
       }}>
-        Open <span style={{ fontSize:14 }}>→</span>
+        Open <span style={{ fontSize: 14 }}>→</span>
       </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
-   DELETED STORIES CARD — empty until backend provides data
-───────────────────────────────────────────────────────────────────────── */
-function DeletedCard({ deleted }) {
-  return (
-    <div className="lf-card">
-      <div className="lf-card__label">Dustbin</div>
-      <div className="lf-card__title" style={{ marginBottom:10 }}>Deleted tales</div>
-      {deleted.length === 0 ? (
-        <div className="lf-card__sub">The bin is empty</div>
-      ) : (
-        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-          {deleted.map(s=>(
-            <div key={s.id} style={{
-              display:"flex", alignItems:"center", gap:10,
-              padding:"8px 12px", borderRadius:8,
-              background:"rgba(255,255,255,.04)",
-              border:"1px solid rgba(255,60,60,.12)",
-            }}>
-              <span style={{ fontSize:18 }}>🗑</span>
-              <span style={{ fontSize:12, color:"rgba(245,222,179,.55)", fontStyle:"italic",
-                overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {s.title}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -850,7 +844,7 @@ const TEAM_PROFILES = [
     instagram: "https://instagram.com/teammate1",
   },
   {
-    name: "Full Stack Developer",
+    name: "Jana Gokul G",
     role: "Backend Engineer",
     linkedin: "https://linkedin.com/in/teammate2",
     github: "https://github.com/teammate2",
@@ -863,9 +857,9 @@ function NavCard({ onNav }) {
   const cardRef = useRef(null);
 
   const pages = [
-    { title:"Logout",  color:"#B03020", spine:"#7A1A10" },
-    { title:"About",   color:"#2E6B32", spine:"#1A4A1E" },
-    { title:"Contact", color:"#1A5FA0", spine:"#0D3D6E" },
+    { title: "Logout", color: "#B03020", spine: "#7A1A10" },
+    { title: "About", color: "#2E6B32", spine: "#1A4A1E" },
+    { title: "Contact", color: "#1A5FA0", spine: "#0D3D6E" },
   ];
 
   // Close when clicking outside
@@ -883,21 +877,21 @@ function NavCard({ onNav }) {
   };
 
   return (
-    <div className="lf-card" style={{ position:"relative" }}>
+    <div className="lf-card" style={{ position: "relative" }}>
       <div className="lf-card__label">Bookshelf navigation</div>
-      <div className="lf-card__title" style={{ marginBottom:14 }}>Pages</div>
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-        {pages.map(p=>(
-          <button key={p.title} onClick={()=>handleNav(p.title)} style={{
-            background:`linear-gradient(135deg,${p.spine},${p.color})`,
-            border:"none", borderRadius:6, padding:"8px 16px",
-            color:"rgba(255,255,255,.85)", fontFamily:"'Lora',serif",
-            fontSize:12, cursor:"pointer", letterSpacing:".05em",
-            boxShadow:"0 2px 8px rgba(0,0,0,.35)",
-            transition:"transform .18s, box-shadow .18s",
+      <div className="lf-card__title" style={{ marginBottom: 14 }}>Pages</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {pages.map(p => (
+          <button key={p.title} onClick={() => handleNav(p.title)} style={{
+            background: `linear-gradient(135deg,${p.spine},${p.color})`,
+            border: "none", borderRadius: 6, padding: "8px 16px",
+            color: "rgba(255,255,255,.85)", fontFamily: "'Lora',serif",
+            fontSize: 12, cursor: "pointer", letterSpacing: ".05em",
+            boxShadow: "0 2px 8px rgba(0,0,0,.35)",
+            transition: "transform .18s, box-shadow .18s",
           }}
-            onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 16px rgba(0,0,0,.45)";}}
-            onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,.35)";}}>
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,.45)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,.35)"; }}>
             {p.title}
           </button>
         ))}
@@ -906,58 +900,58 @@ function NavCard({ onNav }) {
       {/* ── Parchment Contact Card ── */}
       {showContact && (
         <div ref={cardRef} style={{
-          position:"fixed", top:"50%", left:"50%",
-          transform:"translate(-50%,-50%)",
-          width:320, zIndex:1200,
-          background:"#F5E8C7",
-          border:"3px solid #8B6020",
-          borderRadius:12,
-          boxShadow:"0 20px 40px rgba(0,0,0,.75), inset 0 0 80px rgba(139,96,32,.15)",
-          overflow:"hidden",
+          position: "fixed", top: "50%", left: "50%",
+          transform: "translate(-50%,-50%)",
+          width: 320, zIndex: 1200,
+          background: "#F5E8C7",
+          border: "3px solid #8B6020",
+          borderRadius: 12,
+          boxShadow: "0 20px 40px rgba(0,0,0,.75), inset 0 0 80px rgba(139,96,32,.15)",
+          overflow: "hidden",
         }}>
           {/* Wax seal */}
           <div style={{
-            position:"absolute", top:-18, left:"50%", transform:"translateX(-50%)",
-            width:52, height:52, background:"#9C2A2A", borderRadius:"50%",
-            border:"4px solid #FFD700", boxShadow:"0 4px 12px rgba(0,0,0,.6)",
-            display:"flex", alignItems:"center", justifyContent:"center", zIndex:10,
+            position: "absolute", top: -18, left: "50%", transform: "translateX(-50%)",
+            width: 52, height: 52, background: "#9C2A2A", borderRadius: "50%",
+            border: "4px solid #FFD700", boxShadow: "0 4px 12px rgba(0,0,0,.6)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10,
           }}>
-            <span style={{ color:"#FFD700", fontSize:22, fontWeight:"bold" }}>✧</span>
+            <span style={{ color: "#FFD700", fontSize: 22, fontWeight: "bold" }}>✧</span>
           </div>
 
           {/* Header */}
           <div style={{
-            background:"linear-gradient(#8B6020,#5C3F14)",
-            padding:"28px 20px 14px", textAlign:"center",
-            borderBottom:"2px solid #C8903C",
+            background: "linear-gradient(#8B6020,#5C3F14)",
+            padding: "28px 20px 14px", textAlign: "center",
+            borderBottom: "2px solid #C8903C",
           }}>
-            <div style={{ color:"#F5DEB3", fontFamily:"'Cormorant Garamond',serif", fontSize:22, letterSpacing:"1.5px" }}>
+            <div style={{ color: "#F5DEB3", fontFamily: "'Cormorant Garamond',serif", fontSize: 22, letterSpacing: "1.5px" }}>
               Our Team
             </div>
-            <div style={{ color:"#E8D5A3", fontSize:12, marginTop:4 }}>
+            <div style={{ color: "#E8D5A3", fontSize: 12, marginTop: 4 }}>
               Connect · Collaborate · Create
             </div>
           </div>
 
           {/* Scrollable content */}
           <div style={{
-            maxHeight:360, overflowY:"auto", padding:"20px 20px 8px",
-            background:"repeating-linear-gradient(#F5E8C7,#F5E8C7 28px,#EDE0B8 28px,#EDE0B8 29px)",
-            fontFamily:"'Lora',serif",
+            maxHeight: 360, overflowY: "auto", padding: "20px 20px 8px",
+            background: "repeating-linear-gradient(#F5E8C7,#F5E8C7 28px,#EDE0B8 28px,#EDE0B8 29px)",
+            fontFamily: "'Lora',serif",
           }}>
             {TEAM_PROFILES.map((m, i) => (
               <div key={i} style={{
-                marginBottom: i === TEAM_PROFILES.length-1 ? 0 : 14,
-                padding:14, background:"rgba(255,255,255,.75)",
-                border:"1px solid #C8903C", borderRadius:8,
-                boxShadow:"inset 0 2px 6px rgba(0,0,0,.1)",
+                marginBottom: i === TEAM_PROFILES.length - 1 ? 0 : 14,
+                padding: 14, background: "rgba(255,255,255,.75)",
+                border: "1px solid #C8903C", borderRadius: 8,
+                boxShadow: "inset 0 2px 6px rgba(0,0,0,.1)",
               }}>
-                <div style={{ fontSize:16, fontWeight:600, color:"#3C2F1E", marginBottom:2 }}>{m.name}</div>
-                <div style={{ color:"#8B6020", fontSize:12, marginBottom:8 }}>{m.role}</div>
-                <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-                  <a href={m.linkedin} target="_blank" rel="noopener noreferrer" style={{ color:"#0A66C2", textDecoration:"none", fontSize:13 }}>→ LinkedIn</a>
-                  <a href={m.github}   target="_blank" rel="noopener noreferrer" style={{ color:"#24292E", textDecoration:"none", fontSize:13 }}>→ GitHub</a>
-                  <a href={m.instagram} target="_blank" rel="noopener noreferrer" style={{ color:"#E1306C", textDecoration:"none", fontSize:13 }}>→ Instagram</a>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "#3C2F1E", marginBottom: 2 }}>{m.name}</div>
+                <div style={{ color: "#8B6020", fontSize: 12, marginBottom: 8 }}>{m.role}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <a href={m.linkedin} target="_blank" rel="noopener noreferrer" style={{ color: "#0A66C2", textDecoration: "none", fontSize: 13 }}>→ LinkedIn</a>
+                  <a href={m.github} target="_blank" rel="noopener noreferrer" style={{ color: "#24292E", textDecoration: "none", fontSize: 13 }}>→ GitHub</a>
+                  <a href={m.instagram} target="_blank" rel="noopener noreferrer" style={{ color: "#E1306C", textDecoration: "none", fontSize: 13 }}>→ Instagram</a>
                 </div>
               </div>
             ))}
@@ -965,14 +959,14 @@ function NavCard({ onNav }) {
 
           {/* Footer */}
           <div style={{
-            padding:"12px 20px", background:"#EDE0B8",
-            borderTop:"2px solid #8B6020", display:"flex", justifyContent:"center",
+            padding: "12px 20px", background: "#EDE0B8",
+            borderTop: "2px solid #8B6020", display: "flex", justifyContent: "center",
           }}>
-            <button onClick={()=>setShowContact(false)} style={{
-              background:"#8B6020", color:"#F5DEB3", border:"none",
-              padding:"8px 24px", borderRadius:20, cursor:"pointer",
-              fontSize:13, fontFamily:"'Lora',serif",
-              boxShadow:"0 3px 8px rgba(0,0,0,.3)",
+            <button onClick={() => setShowContact(false)} style={{
+              background: "#8B6020", color: "#F5DEB3", border: "none",
+              padding: "8px 24px", borderRadius: 20, cursor: "pointer",
+              fontSize: 13, fontFamily: "'Lora',serif",
+              boxShadow: "0 3px 8px rgba(0,0,0,.3)",
             }}>
               Close Scroll
             </button>
@@ -987,15 +981,17 @@ function NavCard({ onNav }) {
    MAIN
 ───────────────────────────────────────────────────────────────────────── */
 export default function LofiDashboardSmall() {
-  const [dark,      setDark     ] = useState(false);
-  const [toast,     setToast    ] = useState(null);
+  const [dark, setDark] = useState(false);
+  const [toast, setToast] = useState(null);
   const [showAbout, setShowAbout] = useState(false);
-  const [user,      setUser     ] = useState({ name: "", avatar: null, currentStreak: 0, longestStreak: 0 });
-  const [streakDays,setStreakDays] = useState([]);
-  const [deleted,   setDeleted  ] = useState([]);
+  const [showArchive, setShowArchive] = useState(false);
+  const [user, setUser] = useState({ name: "", avatar: null, currentStreak: 0, longestStreak: 0 });
+  const [streakDays, setStreakDays] = useState([]);
+  const [trophies, setTrophies] = useState([]);
+  const [latestGenre, setLatestGenre] = useState("mystery");
 
   const show = m => setToast(m);
-
+  const navigate = useNavigate();
   /* ── Fetch user + streak on mount ── */
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -1023,8 +1019,19 @@ export default function LofiDashboardSmall() {
       })
       .catch(err => console.error("Failed to load streak:", err));
 
-    // Deleted stories — set empty until you build this endpoint
-    setDeleted([]);
+    // Trophies - fetch earned and locked definitions
+    api.get("/trophies")
+      .then(res => setTrophies(res.data.trophies || []))
+      .catch(err => console.error("Failed to load trophies:", err));
+
+    // Fetch latest story for mood lamp
+    api.get("/story/completed")
+      .then(res => {
+         if (res.data.stories && res.data.stories.length > 0) {
+            setLatestGenre(res.data.stories[0].genre);
+         }
+      })
+      .catch(err => console.error("Failed to load latest story genre:", err));
   }, []);
 
   /* ── Avatar upload handler ── */
@@ -1043,15 +1050,8 @@ export default function LofiDashboardSmall() {
 
   /* ── Logout handler ── */
   const handleLogout = async () => {
-    try {
-      await api.post("/auth/logout");
-    } catch (err) {
-      // proceed even if server call fails
-    } finally {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("userLoginTimestamp");
-      window.location.href = "/login"; // adjust path if yours differs
+    if (window.confirm("Are you sure you want to logout?")) {
+      logoutUserWithApi();
     }
   };
 
@@ -1072,35 +1072,35 @@ export default function LofiDashboardSmall() {
   useEffect(() => {
     const root = document.documentElement;
     if (dark) {
-      root.style.setProperty("--warm-bg",     "#08060F");
-      root.style.setProperty("--warm-paper",  "#0E0C1E");
-      root.style.setProperty("--warm-card",   "#0C0A1A");
+      root.style.setProperty("--warm-bg", "#08060F");
+      root.style.setProperty("--warm-paper", "#0E0C1E");
+      root.style.setProperty("--warm-card", "#0C0A1A");
       root.style.setProperty("--warm-border", "rgba(100,130,200,.25)");
-      root.style.setProperty("--warm-gold",   "#A8C0FF");
-      root.style.setProperty("--warm-cream",  "#D0D8FF");
-      root.style.setProperty("--warm-muted",  "rgba(180,200,255,.45)");
-      root.style.setProperty("--warm-dim",    "rgba(180,200,255,.22)");
+      root.style.setProperty("--warm-gold", "#A8C0FF");
+      root.style.setProperty("--warm-cream", "#D0D8FF");
+      root.style.setProperty("--warm-muted", "rgba(180,200,255,.45)");
+      root.style.setProperty("--warm-dim", "rgba(180,200,255,.22)");
     } else {
-      root.style.setProperty("--warm-bg",     "#1C0F06");
-      root.style.setProperty("--warm-paper",  "#2A1808");
-      root.style.setProperty("--warm-card",   "#221204");
+      root.style.setProperty("--warm-bg", "#1C0F06");
+      root.style.setProperty("--warm-paper", "#2A1808");
+      root.style.setProperty("--warm-card", "#221204");
       root.style.setProperty("--warm-border", "rgba(200,144,60,.28)");
-      root.style.setProperty("--warm-gold",   "#C8903C");
-      root.style.setProperty("--warm-cream",  "#F5DEB3");
-      root.style.setProperty("--warm-muted",  "rgba(245,222,179,.45)");
-      root.style.setProperty("--warm-dim",    "rgba(245,222,179,.22)");
+      root.style.setProperty("--warm-gold", "#C8903C");
+      root.style.setProperty("--warm-cream", "#F5DEB3");
+      root.style.setProperty("--warm-muted", "rgba(245,222,179,.45)");
+      root.style.setProperty("--warm-dim", "rgba(245,222,179,.22)");
     }
   }, [dark]);
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: CSS }}/>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="lf-root">
         <RoomHeader
           dark={dark}
           onToggleDark={() => setDark(d => !d)}
           user={user}
-          genre={LATEST_GENRE}
+          genre={latestGenre}
           onAvatarUpload={handleAvatarUpload}
           onNameSave={handleNameSave}
         />
@@ -1112,7 +1112,7 @@ export default function LofiDashboardSmall() {
             label="Welcome"
             title="Generate a new story"
             sub="Open the writing desk and begin a new tale"
-            onClick={() => show("✨ Starting a new tale!")}
+            onClick={() => navigate('/InteractiveStory')}
             accentColor="#FFD580"
           />
           <ActionCard
@@ -1120,7 +1120,7 @@ export default function LofiDashboardSmall() {
             label="Archive box"
             title="Story archive"
             sub="All your tales, bound and shelved"
-            onClick={() => show("📦 Opening Story Archive…")}
+            onClick={() => setShowArchive(true)}
             accentColor="#C8903C"
           />
 
@@ -1134,20 +1134,20 @@ export default function LofiDashboardSmall() {
           </div>
 
           {/* Row 3: Trophies + Mood */}
-          <TrophiesCard/>
-          <MoodCard/>
+          <TrophiesCard trophies={trophies} />
+          <MoodCard genre={latestGenre} />
 
-          {/* Row 4: Nav + Deleted */}
+          {/* Row 4: Nav */}
           <NavCard onNav={page => {
             if (page === "About") setShowAbout(true);
             else if (page === "Logout") handleLogout();
             else show(`📖 Navigating to ${page}…`);
-          }}/>
-          <DeletedCard deleted={deleted}/>
+          }} />
         </div>
 
-        {toast && <Toast msg={toast} onClose={() => setToast(null)}/>}
+        {toast && <Toast msg={toast} onClose={() => setToast(null)} />}
         {showAbout && <AboutPage onClose={() => setShowAbout(false)} />}
+        {showArchive && <StoryArchive onClose={() => setShowArchive(false)} />}
       </div>
     </>
   );

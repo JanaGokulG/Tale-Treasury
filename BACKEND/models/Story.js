@@ -18,6 +18,8 @@ const storySchema = new mongoose.Schema(
     storyDone: { type: Boolean, default: false },
     wordCount: { type: Number, default: 0 },
     isGenerating: { type: Boolean, default: false },
+    isArchived: { type: Boolean, default: false },
+    chapters: { type: Object, default: {} },
   },
   { timestamps: true }
 );

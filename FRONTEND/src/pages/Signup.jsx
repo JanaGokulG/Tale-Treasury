@@ -4,25 +4,25 @@ import { useNavigate } from "react-router-dom";
 import { signupUser } from "../services/authService";
 import { GoogleLogin } from "@react-oauth/google";
 import api from "../api/axios";
-const GRANDMA=bg;
+const GRANDMA = bg;
 const GoogleIcon = () => (
   <svg width="17" height="17" viewBox="0 0 24 24">
-    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
   </svg>
 );
 
 const EyeIcon = ({ open }) => open ? (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/>
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
   </svg>
 ) : (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
 
@@ -72,7 +72,7 @@ function Field({ label, icon, type, id, placeholder, value, onChange, right }) {
   );
 }
 
-export default function TaleTreasuryLogin() {
+export default function TaleTreasurySignup() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -85,11 +85,11 @@ export default function TaleTreasuryLogin() {
   const [contentVisible, setContentVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [error, setError] = useState("");
-useEffect(() => {
-  const handleResize = () => setIsMobile(window.innerWidth < 768);
-  window.addEventListener("resize", handleResize);
-  return () => window.removeEventListener("resize", handleResize);
-}, []);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const particles = useRef(
     [...Array(18)].map(() => ({
@@ -112,45 +112,45 @@ useEffect(() => {
   //   setLoading(true);
   //   setTimeout(() => { setLoading(false); setSuccess(true); }, 1800);
   // };
-  function moveToLogin(){navigate('/')}
-  
-const handlesubmit = async (e) => {
-  e.preventDefault();
+  function moveToLogin() { navigate('/') }
 
-  if ( !email || !password) {
-    setError("Please fill all fields");
-    return;
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  setLoading(true);
-  setError("");
-
-  try {
-    if (password !== rePass) {
-      setError("Passwords do not match");
+    if (!email || !password) {
+      setError("Please fill all fields");
       return;
     }
 
-    const data = await signupUser({
-      email,
-      password,
-    });
+    setLoading(true);
+    setError("");
 
-    setSuccess(true);
+    try {
+      if (password !== rePass) {
+        setError("Passwords do not match");
+        return;
+      }
 
-    setTimeout(() => {
-      navigate("/");
-    }, 1500);
+      await signupUser({
+        email,
+        password,
+      });
 
-  } catch (err) {
-    const message =
-      err.response?.data?.message || "Signup failed";
+      setSuccess(true);
 
-    setError(message);
-  } finally {
-    setLoading(false);
-  }
-};
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
+
+    } catch (err) {
+      const message =
+        err.response?.data?.message || "Signup failed";
+
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <>
       <style>{`
@@ -262,7 +262,7 @@ const handlesubmit = async (e) => {
         background: "linear-gradient(148deg, #F5E8CC 0%, #EDD9A8 35%, #E8D49E 65%, #EFE0B8 100%)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "28px 20px", position: "relative", overflow: "hidden",
-        fontFamily: "'Lora', serif",overflowX: "hidden",
+        fontFamily: "'Lora', serif", overflowX: "hidden",
       }}>
         {/* Dot texture */}
         <div style={{
@@ -309,8 +309,6 @@ const handlesubmit = async (e) => {
           <div style={{
             position: "relative", zIndex: 2,
             display: "flex", width: "100%",
-            flexDirection: isMobile ? "column" : "row",
-            minHeight: isMobile ? "auto" : 620,
             minHeight: 620,
             borderRadius: 3,
             overflow: "hidden",
@@ -371,7 +369,7 @@ const handlesubmit = async (e) => {
                     border: "1px solid rgba(196,154,46,0.28)", borderRadius: 20,
                   }}>
                     <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
-                      <path d="M7 1L8.5 5.2H13.5L9.5 7.8L11 12.5L7 9.9L3 12.5L4.5 7.8L.5 5.2H5.5Z" fill="#C49A2E"/>
+                      <path d="M7 1L8.5 5.2H13.5L9.5 7.8L11 12.5L7 9.9L3 12.5L4.5 7.8L.5 5.2H5.5Z" fill="#C49A2E" />
                     </svg>
                     <span style={{
                       fontFamily: "'Cormorant Garamond', serif",
@@ -389,7 +387,7 @@ const handlesubmit = async (e) => {
                   filter: "drop-shadow(0 12px 28px rgba(80,40,10,0.18))",
                 }}>
                   <img src={GRANDMA} alt="Grandma reading"
-                    style={{ width: "100%", height:"100%", display: "block", borderRadius: 14 }} />
+                    style={{ width: "100%", height: "100%", display: "block", borderRadius: 14 }} />
                 </div>
 
                 {/* Tagline */}
@@ -399,12 +397,12 @@ const handlesubmit = async (e) => {
                     fontSize: 17, fontWeight: 400, fontStyle: "italic",
                     color: "#5C3008", lineHeight: 1.6, marginBottom: 10,
                   }}>
-                    Every great story begins<br/>with turning the first page.
+                    Every great story begins<br />with turning the first page.
                   </p>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}>
                     <div style={{ width: 26, height: 1, background: "rgba(196,154,46,0.4)" }} />
                     <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-                      <path d="M6 1L7.1 4.3H10.5L7.7 6.2L8.9 9.5L6 7.6L3.1 9.5L4.3 6.2L1.5 4.3H4.9Z" fill="#C49A2E" opacity="0.62"/>
+                      <path d="M6 1L7.1 4.3H10.5L7.7 6.2L8.9 9.5L6 7.6L3.1 9.5L4.3 6.2L1.5 4.3H4.9Z" fill="#C49A2E" opacity="0.62" />
                     </svg>
                     <div style={{ width: 26, height: 1, background: "rgba(196,154,46,0.4)" }} />
                   </div>
@@ -494,10 +492,10 @@ const handlesubmit = async (e) => {
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d={
                       i === 0 ? "M22 22L22 2L2 2" :
-                      i === 1 ? "M22 2L22 22L2 22" :
-                      "M2 2L2 22L22 22"
-                    } stroke="#C49A2E" strokeWidth="1.2" fill="none"/>
-                    <circle cx={i === 0 ? 22 : i === 1 ? 22 : 2} cy={i === 0 ? 2 : 22} r="2" fill="#C49A2E" opacity="0.5"/>
+                        i === 1 ? "M22 2L22 22L2 22" :
+                          "M2 2L2 22L22 22"
+                    } stroke="#C49A2E" strokeWidth="1.2" fill="none" />
+                    <circle cx={i === 0 ? 22 : i === 1 ? 22 : 2} cy={i === 0 ? 2 : 22} r="2" fill="#C49A2E" opacity="0.5" />
                   </svg>
                 </div>
               ))}
@@ -532,24 +530,24 @@ const handlesubmit = async (e) => {
                       fontSize: isMobile ? 20 : 27, fontWeight: 700, color: "#1C1008",
                       lineHeight: 1.15, marginBottom: 5,
                     }}>
-                      Welcome,<br/>
+                      Welcome,<br />
                       <em style={{ fontWeight: 400 }}>dear reader.</em>
                     </h1>
                     <p style={{
                       fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic",
-                      fontSize: isMobile ? 16 : 19 , color: "#8B6A30", lineHeight: 1.6, marginBottom: 22,
+                      fontSize: isMobile ? 16 : 19, color: "#8B6A30", lineHeight: 1.6, marginBottom: 22,
                     }}>
                       Your story awaits — sign up to continue the adventure.
                     </p>
 
-                    <form onSubmit={handlesubmit}>
+                    <form onSubmit={handleSubmit}>
                       <Field
                         label="Your Scroll Name" id="email" type="email"
                         placeholder="e.g. avid.reader@tales.com"
                         value={email} onChange={e => setEmail(e.target.value)}
                         icon={
                           <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                            <path d="M2 4l6 4 6-4M2 4h12v9H2z" stroke="#9B7840" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                            <path d="M2 4l6 4 6-4M2 4h12v9H2z" stroke="#9B7840" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                           </svg>
                         }
                       />
@@ -561,8 +559,8 @@ const handlesubmit = async (e) => {
                         value={password} onChange={e => setPassword(e.target.value)}
                         icon={
                           <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                            <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="#9B7840" strokeWidth="1.3" fill="none"/>
-                            <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="#9B7840" strokeWidth="1.3" strokeLinecap="round" fill="none"/>
+                            <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="#9B7840" strokeWidth="1.3" fill="none" />
+                            <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="#9B7840" strokeWidth="1.3" strokeLinecap="round" fill="none" />
                           </svg>
                         }
                         right={
@@ -587,8 +585,8 @@ const handlesubmit = async (e) => {
                         value={rePass} onChange={e => setRePass(e.target.value)}
                         icon={
                           <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                            <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="#9B7840" strokeWidth="1.3" fill="none"/>
-                            <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="#9B7840" strokeWidth="1.3" strokeLinecap="round" fill="none"/>
+                            <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="#9B7840" strokeWidth="1.3" fill="none" />
+                            <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="#9B7840" strokeWidth="1.3" strokeLinecap="round" fill="none" />
                           </svg>
                         }
                         right={
@@ -616,7 +614,7 @@ const handlesubmit = async (e) => {
                         ) : (
                           <div className="btn-inner">
                             <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                              <path d="M2 8h9M7 4l5 4-5 4" stroke="#FFFDF6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                              <path d="M2 8h9M7 4l5 4-5 4" stroke="#FFFDF6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                             </svg>
                             Open My Story
                           </div>
@@ -633,21 +631,20 @@ const handlesubmit = async (e) => {
                       </div>
 
                       <GoogleLogin
-                          onSuccess={async (credentialResponse) => {
+                        onSuccess={async (credentialResponse) => {
                           const token = credentialResponse.credential;
-
-                           const res = await api.post("/auth/google", {token,});
-                           localStorage.setItem("token", res.data.token);
-                           navigate("/dashboard");
-                                              }
-                              }
-                      onError={() => {
-                        console.log("Login Failed");
-                      }}
-                    />
+                          const res = await api.post("/auth/google", { token, });
+                          localStorage.setItem("token", res.data.token);
+                          navigate("/dashboard");
+                        }
+                        }
+                        onError={() => {
+                          console.log("Login Failed");
+                        }}
+                      />
                     </form>
 
-                    { <div style={{
+                    {<div style={{
                       marginTop: 16, padding: "11px 14px",
                       background: "rgba(196,154,46,0.07)",
                       border: "1px solid rgba(196,154,46,0.2)", borderRadius: 8,
@@ -668,7 +665,7 @@ const handlesubmit = async (e) => {
                           Continue your tale →
                         </button>
                       </span>
-                    </div> }
+                    </div>}
                   </>
                 ) : (
                   <div style={{ textAlign: "center", padding: "28px 8px", animation: "fadeUp 0.5s ease both" }}>
@@ -680,7 +677,7 @@ const handlesubmit = async (e) => {
                       animation: "popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both",
                     }}>
                       <svg width="27" height="27" viewBox="0 0 27 27" fill="none">
-                        <path d="M5 13.5l5.5 5.5 11-11" stroke="#C49A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M5 13.5l5.5 5.5 11-11" stroke="#C49A2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
                     <h2 style={{
@@ -691,7 +688,7 @@ const handlesubmit = async (e) => {
                       fontFamily: "'Cormorant Garamond', serif",
                       fontStyle: "italic", fontSize: 15, color: "#8B6A30", lineHeight: 1.65,
                     }}>
-                      The pages are turning…<br/>Step into your story, dear reader.
+                      The pages are turning…<br />Step into your story, dear reader.
                     </p>
                     <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 18 }}>
                       {[0, 0.15, 0.3].map((d, i) => (

@@ -4,6 +4,8 @@ import catanimation from '../assets/cat.json';
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import AboutPage from "../components/AboutPage";
+import StoryArchive from "../components/StoryArchive";
+import { logoutUserWithApi } from "../services/authService";
 
 
 /* ── MOCK DATA ──────────────────────────────────────────────────────────── */
@@ -14,14 +16,6 @@ const MOCK_USER = {
   isConsistent: true,
 };
 
-const MOCK_TROPHIES = [
-  { id: 1, emoji: "📖", label: "First Story Read",                earned: true  },
-  { id: 2, emoji: "🌙", label: "Night Owl – 3 stories after midnight", earned: true  },
-  { id: 3, emoji: "🔥", label: "7-Day Streak",                    earned: false },
-  { id: 4, emoji: "✨", label: "Story Weaver – 5 tales generated", earned: false },
-  { id: 5, emoji: "🌟", label: "Archive Keeper",                   earned: false },
-  { id: 6, emoji: "🎭", label: "Genre Explorer",                   earned: false },
-];
 
 const MOCK_DELETED = [
   { id: 1, title: "The Lighthouse at the Edge of Memory" },
@@ -548,24 +542,8 @@ function NavBook({ title, color, spine, w, h, tilt = 0, onClick }) {
 }
 
 
-/* ── Logout helper ───────────────────────────────────────────────────────── */
-export const logoutUserWithApi = async () => {
-  try {
-    await api.post("/auth/logout");
-    localStorage.removeItem("userLoginTimestamp");
-  } catch (err) {
-    console.warn("Backend logout failed");
-  } finally {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("userLoginTimestamp");
-    window.location.href = "/";
-  }
-};
-
-
 /* ── Shelves ─────────────────────────────────────────────────────────────── */
-function Shelves({ onNav }) {
+function Shelves({ onNav ,trophies=[]}) {
   const [showContactCard, setShowContactCard] = useState(false);
   const cardRef = useRef(null);
 
@@ -631,13 +609,21 @@ function Shelves({ onNav }) {
 
         <div style={{ height: 13 }} />
 
-        {/* SHELF 2 — Trophies */}
+        {/* SHELF 2 - Trophies */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "0 12px", height: 56 }}>
-          {MOCK_TROPHIES.map((t) => (
-            <Tip key={t.id} text={t.label} pos="bottom">
-              <div style={{ fontSize: t.earned ? 21 : 18 }}>{t.emoji}</div>
+          {trophies.map((t) => (
+            <Tip key={t.id} text={t.earned ? t.label : `🔒 ${t.label}`} pos="bottom">
+              <div style={{
+                fontSize: t.earned ? 21 : 18,
+                opacity: t.earned ? 1 : 0.35,
+                filter: t.earned ? "none" : "grayscale(1)",
+                transition: "opacity 0.3s, filter 0.3s",
+                cursor: "default",
+            }}>
+              {t.emoji}
+              </div>
             </Tip>
-          ))}
+        ))}
         </div>
       </div>
 
@@ -1022,6 +1008,8 @@ export default function LofiDashboard() {
   const [user,        setUser]        = useState({ name: "", avatar: null });
   const [isUploading, setIsUploading] = useState(false);
   const [showAbout,   setShowAbout]   = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
+  const [trophies, setTrophies] = useState([]);   // ← ADD THIS
 
   // Load user from backend on mount
   useEffect(() => {
@@ -1035,7 +1023,11 @@ export default function LofiDashboard() {
         if (stored) setUser(JSON.parse(stored));
       });
   }, []);
-
+  useEffect(() => {
+  api.get("/trophies")
+    .then(res => setTrophies(res.data.trophies))
+    .catch(err => console.error("Failed to load trophies:", err));
+}, []);
   const handleEditPhoto = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -1294,7 +1286,7 @@ export default function LofiDashboard() {
               await api.patch("/auth/update-name", { name: newName });
               setUser(prev => ({ ...prev, name: newName }));
               show("✨ Name updated!");
-            } catch (err) {
+            } catch {
               show("❌ Failed to update name");
             }
           }}
@@ -1304,10 +1296,13 @@ export default function LofiDashboard() {
 
         <StreakCalendar />
 
-        <Shelves onNav={page => {
-          if (page === "about") setShowAbout(true);
-          else show(`📖 Navigating to ${page}…`);
-        }} />
+       <Shelves trophies={trophies} onNav={page => {
+          if (page === "about") {
+            setShowAbout(true);
+          } else {
+          show(`📖 Navigating to ${page}…`);
+          }
+}} />
 
         <DreamCatcher />
 
@@ -1316,7 +1311,7 @@ export default function LofiDashboard() {
         {/* Laptop — navigates to story generator */}
         <Laptop onClick={() => navigate('/InteractiveStory')} />
 
-        <ArchiveBox onClick={() => show("📦 Opening Story Archive…")} />
+        <ArchiveBox onClick={() => setShowArchive(true)} />
 
         <Dustbin deleted={MOCK_DELETED} />
 
@@ -1421,6 +1416,9 @@ export default function LofiDashboard() {
 
         {/* About Page Overlay */}
         {showAbout && <AboutPage onClose={() => setShowAbout(false)} />}
+        
+        {/* Archive Modal */}
+        {showArchive && <StoryArchive onClose={() => setShowArchive(false)} />}
       </div>
     </>
   );

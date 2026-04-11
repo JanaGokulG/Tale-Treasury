@@ -304,7 +304,6 @@ useEffect(() => {
             position: "relative", zIndex: 2,
             display: "flex", width: "100%",
             flexDirection: isMobile ? "column" : "row",
-            minHeight: isMobile ? "auto" : 620,
             minHeight: 620,
             borderRadius: 3,
             overflow: "hidden",
