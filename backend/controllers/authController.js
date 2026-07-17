@@ -177,7 +177,7 @@ export const googleAuth = async (req, res) => {
 
     const payload = ticket.getPayload();
 
-    const { email, name } = payload;
+    const { email, name,picture } = payload;
 
     // 2. Check if user exists
     let user = await User.findOne({ email });
@@ -188,7 +188,7 @@ export const googleAuth = async (req, res) => {
         name,
         email,
         password: "google_oauth", // dummy
-        avatar: user.avatar || null
+        avatar: picture || null
         
       });
     }
