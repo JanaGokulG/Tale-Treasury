@@ -131,7 +131,7 @@ const handlesubmit = async (e) => {
       return;
     }
 
-    const data = await signupUser({
+    await signupUser({
       email,
       password,
     });
@@ -311,7 +311,6 @@ const handlesubmit = async (e) => {
             display: "flex", width: "100%",
             flexDirection: isMobile ? "column" : "row",
             minHeight: isMobile ? "auto" : 620,
-            minHeight: 620,
             borderRadius: 3,
             overflow: "hidden",
             outline: "1px solid rgba(155,105,35,0.38)",
@@ -541,7 +540,7 @@ const handlesubmit = async (e) => {
                     }}>
                       Your story awaits — sign up to continue the adventure.
                     </p>
-
+                    {error && <p style={{ color: "red", marginBottom: "10px" }}>{error}</p>}
                     <form onSubmit={handlesubmit}>
                       <Field
                         label="Your Scroll Name" id="email" type="email"

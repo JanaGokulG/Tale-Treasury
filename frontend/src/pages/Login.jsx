@@ -305,7 +305,6 @@ useEffect(() => {
             display: "flex", width: "100%",
             flexDirection: isMobile ? "column" : "row",
             minHeight: isMobile ? "auto" : 620,
-            minHeight: 620,
             borderRadius: 3,
             overflow: "hidden",
             outline: "1px solid rgba(155,105,35,0.38)",

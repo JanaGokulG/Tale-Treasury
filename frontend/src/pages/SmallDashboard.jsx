@@ -235,7 +235,7 @@ function RoomHeader({ dark, onToggleDark, user, genre, onAvatarUpload, onNameSav
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(user.name || "");
   const [nameSaving, setNameSaving] = useState(false);
-  const fileInputRef = useState(null);
+
 
   // keep nameVal in sync when user prop updates
   useEffect(() => { setNameVal(user.name || ""); }, [user.name]);
@@ -277,7 +277,7 @@ function RoomHeader({ dark, onToggleDark, user, genre, onAvatarUpload, onNameSav
       if (!file) return;
       const formData = new FormData();
       formData.append("avatar", file);
-      try { await onAvatarUpload(formData); } catch { }
+      try { await onAvatarUpload(formData); } catch (e) { console.error(e); }
     };
     inp.click();
   };
@@ -1052,7 +1052,7 @@ export default function LofiDashboardSmall() {
     try {
       await api.post("/auth/logout");
     } catch (err) {
-      // proceed even if server call fails
+      console.warn("Logout error:", err);
     } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("user");

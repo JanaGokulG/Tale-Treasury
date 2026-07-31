@@ -87,12 +87,13 @@ function PortraitFrame({ user, onEdit, onEditName, isUploading }) {
   const [hov, setHov] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(user?.name || "");
+  const [prevUserName, setPrevUserName] = useState(user?.name);
   const hasPhoto = !!user?.avatar;
 
-  // Sync nameVal when user.name changes (e.g. after API load)
-  useEffect(() => {
+  if (user?.name !== prevUserName) {
+    setPrevUserName(user?.name);
     setNameVal(user?.name || "");
-  }, [user?.name]);
+  }
 
   const handleNameSubmit = () => {
     const trimmed = nameVal.trim();
@@ -273,17 +274,15 @@ function Toast({ msg, onClose }) {
 function WallClock({ session }) {
   const [now, setNow] = useState(new Date());
   const [hov, setHov] = useState(false);
-  const [loginTime, setLoginTime] = useState(null);
   const STORAGE_KEY = "userLoginTimestamp";
-
-  useEffect(() => {
+  const [loginTime] = useState(() => {
     let savedLoginTime = localStorage.getItem(STORAGE_KEY);
     if (!savedLoginTime) {
       savedLoginTime = Date.now().toString();
       localStorage.setItem(STORAGE_KEY, savedLoginTime);
     }
-    setLoginTime(parseInt(savedLoginTime, 10));
-  }, []);
+    return parseInt(savedLoginTime, 10);
+  });
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -542,12 +541,12 @@ function NavBook({ title, color, spine, w, h, tilt = 0, onClick }) {
 
 
 /* ── Logout helper ───────────────────────────────────────────────────────── */
-export const logoutUserWithApi = async () => {
+const logoutUserWithApi = async () => {
   try {
     await api.post("/auth/logout");
     localStorage.removeItem("userLoginTimestamp");
   } catch (err) {
-    console.warn("Backend logout failed");
+    console.warn("Backend logout failed", err);
   } finally {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -1302,6 +1301,7 @@ export default function LofiDashboard() {
               setUser(prev => ({ ...prev, name: newName }));
               show("✨ Name updated!");
             } catch (err) {
+              console.error(err);
               show("❌ Failed to update name");
             }
           }}

@@ -548,8 +548,6 @@ const QuillSVG = ({ animating }) => (
   </svg>
 );
 
-const OLLAMA_BASE = "http://localhost:11434";
-
 // ─── API helpers ──────────────────────────────────────────────────────────────
 const apiHeaders = () => ({
   "Content-Type": "application/json",
@@ -563,7 +561,7 @@ const saveSession = async (state) => {
       headers: apiHeaders(),
       body: JSON.stringify(state),
     });
-  } catch (_) {/* silent — offline Ollama environment, non-critical */}
+  } catch (err) { console.debug("session error", err); }
 };
 
 const fetchSession = async () => {
@@ -571,13 +569,13 @@ const fetchSession = async () => {
     const res = await fetch(`${API_BASE}/story/session`, { headers: apiHeaders() });
     const data = await res.json();
     return data.story;
-  } catch (_) { return null; }
+  } catch (err) { console.debug("fetch error", err); return null; }
 };
 
 const clearSession = async () => {
   try {
     await fetch(`${API_BASE}/story/session`, { method: "DELETE", headers: apiHeaders() });
-  } catch (_) {}
+  } catch (err) { console.debug("clear error", err); }
 };
 const saveCompletedStoryToDB = async (payload) => {
   try {
@@ -600,7 +598,7 @@ const saveCompletedStoryToDB = async (payload) => {
       headers: apiHeaders(),
       body: JSON.stringify({ ...payload, chapters }),
     });
-  } catch (_) {}
+  } catch (err) { console.debug("save error", err); }
 };
 // ─── PDF Export ───────────────────────────────────────────────────────────────
 const exportToPDF = (storyTitle, storySegments, currentText, genre, ageGroup) => {
@@ -666,7 +664,7 @@ const exportToPDF = (storyTitle, storySegments, currentText, genre, ageGroup) =>
     });
   };
 
-  storySegments.forEach((seg, i) => {
+  storySegments.forEach((seg) => {
     addTextBlock(seg.text, false);
     if (seg.chosenChoice) {
       y += 2;
@@ -707,6 +705,7 @@ export default function ScrollStoryPage() {
   const [storySegments, setStorySegments] = useState([]);
   const [currentText, setCurrentText] = useState("");
   const [choices, setChoices] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [isFinalChapter, setIsFinalChapter] = useState(false);
   const [storyTitle, setStoryTitle] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -724,7 +723,7 @@ export default function ScrollStoryPage() {
 
   // ── On mount: check for interrupted session ────────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => setScrollOpen(true), 300);
+    setTimeout(() => setScrollOpen(true), 300);
     (async () => {
       if (location.state?.viewStory) {
         // Read mode for archived story
@@ -766,7 +765,7 @@ export default function ScrollStoryPage() {
         restoreSession(session);
       }
     })();
-    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const restoreSession = (session) => {
@@ -831,6 +830,7 @@ Requirements:
 - End with a memorable closing sentence that feels like the end of a beloved book.
 - Do NOT write any choices. Do NOT write "CHOICE". Do NOT end mid-action.
 - Language must be wholesome and age-appropriate.
+- Output ONLY the template below. Do not write any introduction, commentary, or text outside the template.
 
 Format:
 STORY:
@@ -854,6 +854,7 @@ Requirements:
   WRONG format: "Try to escape" (too vague — be specific)
 - The two choices must lead to meaningfully different paths.
 - Language must be wholesome and age-appropriate.
+- Output ONLY the template below. Do not write any introduction, commentary, or text outside the template.
 
 Format:
 TITLE: [A short evocative title — 2 to 5 words]
@@ -878,6 +879,7 @@ Requirements:
   CORRECT format: "Climb through the broken window" / "Run to the nearest guard for help"
   WRONG format: "Will she dare to enter?" / "Does he trust the old man?" (no questions ever)
 - Language must be wholesome and age-appropriate.
+- Output ONLY the template below. Do not write any introduction, commentary, or text outside the template.
 
 Format:
 STORY:
@@ -910,12 +912,19 @@ CHOICE 2: [Specific action, 5–12 words, no question marks]`;
     };
   };
 
-  const streamFromOllama = async (messages, onChunk) => {
-    const response = await fetch(`${OLLAMA_BASE}/api/chat`, {
+  const streamFromGroq = async (systemPrompt, messages, onChunk) => {
+    const response = await fetch(`${API_BASE}/story/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "mistral", messages, stream: true })
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({ systemPrompt, messages })
     });
+
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -926,17 +935,30 @@ CHOICE 2: [Specific action, 5–12 words, no question marks]`;
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
+      const lines = buffer.split("\n\n");
       buffer = lines.pop() || "";
       for (const line of lines) {
         if (!line.trim()) continue;
-        try {
-          const parsed = JSON.parse(line);
-          if (parsed.message?.content) {
-            fullText += parsed.message.content;
-            onChunk(fullText);
+        if (line.startsWith("data: ")) {
+          const rawData = line.substring(6).trim();
+          if (rawData === "[DONE]") {
+            continue;
           }
-        } catch (_) {}
+          try {
+            const parsed = JSON.parse(rawData);
+            if (parsed.error) {
+              const err = new Error(parsed.message || "Generation failed");
+              err.isFriendly = true;
+              throw err;
+            }
+            if (parsed.token) {
+              fullText += parsed.token;
+              onChunk(fullText);
+            }
+          } catch (e) {
+            if (e.isFriendly) throw e;
+          }
+        }
       }
     }
     return fullText;
@@ -977,12 +999,11 @@ CHOICE 2: [Specific action, 5–12 words, no question marks]`;
     try {
       const sys = buildSystemPrompt(true, false);
       const messages = [
-        { role: "system", content: sys },
         { role: "user", content: `Story idea: ${prompt}\n\nBegin the adventure!` }
       ];
 
       let finalText = "";
-      await streamFromOllama(messages, (ft) => {
+      await streamFromGroq(sys, messages, (ft) => {
         finalText = ft;
         const live = parseResponse(ft, false);
         if (live.title) setStoryTitle(live.title);
@@ -998,7 +1019,9 @@ CHOICE 2: [Specific action, 5–12 words, no question marks]`;
 
       autoSave({ ...sessionBase, isGenerating: false, storyTitle: parsed.title, currentText: parsed.story, choices: finalChoices });
     } catch (err) {
-      const errText = "The quill could not reach the mistral...\n\nMake sure Ollama is running on http://localhost:11434 with the mistral model loaded.";
+      const errText = err.isFriendly
+        ? err.message
+        : "The magic quill slipped. Please try again.";
       setCurrentText(errText);
       setChoices([]);
       autoSave({ ...sessionBase, isGenerating: false, currentText: errText, choices: [] });
@@ -1032,18 +1055,18 @@ CHOICE 2: [Specific action, 5–12 words, no question marks]`;
     try {
       const sys = buildSystemPrompt(false, willBeFinal);
       const history = buildHistory(newSegments, promptRef.current);
-      const messages = [{ role: "system", content: sys }, ...history];
+      const messagesToSend = [...history];
 
       if (willBeFinal) {
-        messages.push({
+        messagesToSend.push({
           role: "user",
           content: `I choose: "${choiceText}"\n\nNow write the final chapter — a full, rich, satisfying conclusion that resolves everything. At least 5 paragraphs. End with "THE END".`
         });
-        messages.splice(messages.length - 2, 1);
+        messagesToSend.splice(messagesToSend.length - 2, 1);
       }
 
       let finalText = "";
-      await streamFromOllama(messages, (ft) => {
+      await streamFromGroq(sys, messagesToSend, (ft) => {
         finalText = ft;
         const live = parseResponse(ft, willBeFinal);
         setCurrentText(live.story);
@@ -1055,25 +1078,27 @@ CHOICE 2: [Specific action, 5–12 words, no question marks]`;
       setCurrentText(parsed.story);
 
       if (willBeFinal) {
-  setChoices([]);
-  setStoryDone(true);
-  await saveCompletedStoryToDB({
-    storyTitle,
-    genre,
-    ageGroup,
-    prompt,
-    storySegments: newSegments,
-    finalText: parsed.story,
-    wordCount,
-  });
-  await clearSession();
-} else {
+        setChoices([]);
+        setStoryDone(true);
+        await saveCompletedStoryToDB({
+          storyTitle,
+          genre,
+          ageGroup,
+          prompt,
+          storySegments: newSegments,
+          finalText: parsed.story,
+          wordCount,
+        });
+        await clearSession();
+      } else {
         const fc = parsed.choices.length === 2 ? parsed.choices : [];
         setChoices(fc);
         autoSave({ ...sessionPatch, isGenerating: false, currentText: parsed.story, choices: fc });
       }
     } catch (err) {
-      const errText = "The story thread was lost to the mists...\n\nCheck that Ollama is still running.";
+      const errText = err.isFriendly
+        ? err.message
+        : "The magic quill slipped. Please try again.";
       setCurrentText(errText);
       setChoices([]);
       autoSave({ ...sessionPatch, isGenerating: false, currentText: errText, choices: [] });
